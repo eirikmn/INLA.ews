@@ -12,6 +12,6 @@ License: MIT + file LICENSE
 Additional_repositories: https://inla.inla-r-download.org/R/testing
 Depends: R(>= 3.5), stats
 Imports: Matrix, rlang, matrixStats, ggplot2
-Suggests: graphics, INLA, knitr, rmarkdown
+Suggests: graphics, INLA, knitr, rmarkdown, testthat
 Encoding: UTF-8
 RoxygenNote: 7.1.2
