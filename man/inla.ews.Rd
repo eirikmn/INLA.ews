@@ -43,7 +43,7 @@ Fits a Bayesian hierarchical model with time-dependent correlation using INLA.
 \examples{
 \donttest{
 ### AR(1) simulation example ###
-n = 500
+n = 300
 sigma = 1
 a=0.2
 b=0.7/n
@@ -76,7 +76,7 @@ plot(object)
 
 
 ### fGn simulation example ###
-n=300
+n=200
 sigma = 1.2
 time=1:n
 a = 0.6

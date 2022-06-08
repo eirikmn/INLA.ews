@@ -18,7 +18,7 @@ Displays the return object from \code{summary.inla.ews} to an easily readable fo
 }
 \examples{
 \donttest{
-n = 500
+n = 200
 sigma = 1
 a=0.2
 b=0.7/n

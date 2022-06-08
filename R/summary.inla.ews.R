@@ -136,7 +136,7 @@ summary.inla.ews = function(object,digits=4L,...){
 #'
 #' @examples 
 #' \donttest{
-#' n = 500
+#' n = 200
 #' sigma = 1
 #' a=0.2
 #' b=0.7/n
