@@ -1,14 +1,15 @@
 ---
-output: github_document
+  output: github_document
 ---
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
-```{r, include = FALSE}
+  
+  <!-- README.md is generated from README.Rmd. Please edit that file -->
+  
+  ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
+  dev = "pdf",
   out.width = "100%"
 )
 ```
@@ -16,16 +17,16 @@ knitr::opts_chunk$set(
 # INLA.ews
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/eirikmn/INLA.ews/workflows/R-CMD-check/badge.svg)](https://github.com/eirikmn/INLA.ews/actions)
+  [![R-CMD-check](https://github.com/eirikmn/INLA.ews/workflows/R-CMD-check/badge.svg)](https://github.com/eirikmn/INLA.ews/actions)
 <!-- badges: end -->
-
-This Repository contains the INLA.ews package for Bayesian detection of early warning signals.
+  
+  This Repository contains the INLA.ews package for Bayesian detection of early warning signals.
 
 ## Installation
 
 You can install the development version of INLA.ews from [GitHub](https://github.com/) with:
-
-``` {r install, eval=FALSE}
+  
+  ``` {r install, eval=FALSE}
 # install.packages("devtools")
 devtools::install_github("eirikmn/INLA.ews")
 ```
@@ -49,6 +50,23 @@ for(i in 2:n){
 }
 object = inla.ews(data,model="ar1", memory.true=phis)
 plot(object)
+```
+
+```{r plot, eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+library(ggplot2)
+plot.df = data.frame(time=object$.args$inladata$time,
+                           mean=object$results$summary$phi$mean,
+                           median=object$results$summary$phi$median,
+                           lower=object$results$summary$phi$hpd0.95lower,
+                           upper=object$results$summary$phi$hpd0.95upper)
+      ylim=c(0,1)
+      ylab=expression(paste("lag-one correlation: ",phi))
+ggplot(data=plot.df,aes(x=.data$time)) + 
+      geom_ribbon(aes(ymin=.data$lower,ymax=.data$upper),color="red",fill="red",alpha=0.3)+
+      theme_bw()+ylab(ylab)+xlab("Time")+ylim(ylim)  + geom_line(aes(y=.data$mean),color="blue") + 
+        geom_line(data=data.frame(time=object$.args$inladata$time,
+                                  true=object$.args$memory.true),
+                  aes(y=.data$true),col="black",alpha=0.8)
 ```
 
 ## Attribution

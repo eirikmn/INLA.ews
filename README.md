@@ -46,6 +46,8 @@ object = inla.ews(data,model="ar1", memory.true=phis)
 plot(object)
 ```
 
+<embed src="man/figures/README-plot-1.pdf" width="100%" type="application/pdf" />
+
 ## Attribution
 
 This code is associated and written for an upcoming paper. Feel free to
