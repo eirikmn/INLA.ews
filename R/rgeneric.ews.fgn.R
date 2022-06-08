@@ -9,7 +9,6 @@
 #' @param theta Vector describing the hyperparameters in internal scaling.
 #'
 #'
-#' @importFrom INLA inla.pc.dprec
 #' @importFrom stats dnorm
 rgeneric.ews.fgn = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
@@ -141,7 +140,6 @@ rgeneric.ews.fgn = function(
 #' @param theta Vector describing the hyperparameters in internal scaling.
 #'
 #'
-#' @importFrom INLA inla.pc.dprec
 #' @importFrom stats dnorm
 rgeneric.ews.fgn.forcing = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),

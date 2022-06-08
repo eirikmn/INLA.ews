@@ -70,7 +70,6 @@
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
-#' @importFrom INLA inla inla.rgeneric.define
 #' @export
 inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",
                      inla.options=NULL,print.progress=FALSE,
@@ -105,16 +104,16 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",
   }
   if(tolower(model) %in% c("ar1","ar(1)","1")){
     if(length(forcing)>0){
-      rgen_model = inla.rgeneric.define(rgeneric.ews.ar1.forcing,n=n,time=df$time,forcing=forcing)
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1.forcing,n=n,time=df$time,forcing=forcing)
     }else{
-      rgen_model = inla.rgeneric.define(rgeneric.ews.ar1,n=n,time=df$time)
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1,n=n,time=df$time)
     }
   }else if(tolower(model) %in% c("fgn","lrd")){
     warning("This model is considerably slower than the AR(1) process. Expect longer computational time.")
     if(length(forcing)>0){
-      rgen_model = inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,time=df$time,forcing=forcing)
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,time=df$time,forcing=forcing)
     }else{
-      rgen_model = inla.rgeneric.define(rgeneric.ews.fgn,n=n,time=df$time)
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn,n=n,time=df$time)
     }
     
   }
@@ -124,7 +123,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",
   if(print.progress){
     cat("Initiating inla program..\n",sep="")
   }
-   r = inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
+   r = INLA::inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
             verbose=FALSE,num.threads = 1)
   # r <- do.call(INLA::inla,c(list(formula=formula,data=df,inla.options)))
    if(print.progress){

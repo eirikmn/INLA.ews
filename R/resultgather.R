@@ -10,7 +10,6 @@
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords INLA early warning signal summary
-#' @importFrom INLA inla.emarginal inla.zmarginal inla.tmarginal inla.hyperpar.sample inla.hpdmarginal inla.pmarginal
 #' @importFrom stats density dnorm
 #' @importFrom matrixStats rowMedians rowSds
 resultgather <- function(object,print.progress){
@@ -18,22 +17,22 @@ resultgather <- function(object,print.progress){
   r = object$inlafit
   df = object$.args$inladata
   time=df$time
-  sigma_est=inla.emarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta1 for idy`)
-  sigma_marg=inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta1 for idy`)
+  sigma_est=INLA::inla.emarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta1 for idy`)
+  sigma_marg=INLA::inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta1 for idy`)
   
   rekke = diff(range(df$time))
-  b_est=inla.emarginal(function(x) -1/rekke+2/rekke*1/(1+exp(-x)) ,r$marginals.hyperpar$`Theta2 for idy` )*n
-  b_marg=inla.tmarginal(function(x) -1/rekke+2/rekke*1/(1+exp(-x)) ,r$marginals.hyperpar$`Theta2 for idy`)
-  b_positive_prob = 1-inla.pmarginal(0,b_marg)
-  b_zmarg = inla.zmarginal(b_marg,silent=TRUE)
+  b_est=INLA::inla.emarginal(function(x) -1/rekke+2/rekke*1/(1+exp(-x)) ,r$marginals.hyperpar$`Theta2 for idy` )*n
+  b_marg=INLA::inla.tmarginal(function(x) -1/rekke+2/rekke*1/(1+exp(-x)) ,r$marginals.hyperpar$`Theta2 for idy`)
+  b_positive_prob = 1-INLA::inla.pmarginal(0,b_marg)
+  b_zmarg = INLA::inla.zmarginal(b_marg,silent=TRUE)
   b_low = b_zmarg$quant0.025
   b_high= b_zmarg$quant0.975
   nsims = 30000
-  hypersamples = inla.hyperpar.sample(nsims,r)
+  hypersamples = INLA::inla.hyperpar.sample(nsims,r)
   
   if(object$.args$model %in% c("ar1","ar(1)","1")){
     if(length(object$.args$forcing)>0){
-      sigmaf_marg = inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta4 for idy`)
+      sigmaf_marg = INLA::inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta4 for idy`)
       F0_marg = object$inlafit$marginals.hyperpar$`Theta5 for idy`
     }
     
@@ -70,9 +69,9 @@ resultgather <- function(object,print.progress){
     for(i in 1:n){
       dens = density(phi_sims[i,])
       dens = data.frame(x=dens$x,y=dens$y)
-      zmarg = inla.zmarginal(dens,silent=TRUE)
+      zmarg = INLA::inla.zmarginal(dens,silent=TRUE)
       phi_median[i]=zmarg$quant0.5; phi_sd[i] = zmarg$sd
-      hpds = inla.hpdmarginal(0.95,dens)
+      hpds = INLA::inla.hpdmarginal(0.95,dens)
       phi_lower[i]=hpds[1]; phi_upper[i]=hpds[2]
       phi_qlower[i]=zmarg$quant0.025
       phi_qmid[i]=zmarg$quant0.5
@@ -83,12 +82,12 @@ resultgather <- function(object,print.progress){
     }
   }else if(object$.args$model %in% c("fgn","lrd")){
     if(length(object$.args$forcing)>0){
-      sigmaf_marg = inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta4 for idy`)
+      sigmaf_marg = INLA::inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta4 for idy`)
       F0_marg = object$inlafit$marginals.hyperpar$`Theta5 for idy`
     }
     bmax = 0.5/(time[n]-time[1])
     bmin = -bmax
-    b_marg = inla.tmarginal(function(x)bmin+(bmax-bmin)/(1+exp(-x)),r$marginals.hyperpar$`Theta2 for idy`)
+    b_marg = INLA::inla.tmarginal(function(x)bmin+(bmax-bmin)/(1+exp(-x)),r$marginals.hyperpar$`Theta2 for idy`)
     bsims = bmin+(bmax-bmin)/(1+exp(-hypersamples[,2]))
     a_sims = numeric(nsims)
     if(print.progress){
@@ -121,8 +120,8 @@ resultgather <- function(object,print.progress){
     Hqupper = numeric(n)
     for(i in 1:n){
       dens =density(H_sims[i,]); dens = data.frame(x=dens$x,y=dens$y)
-      zmarg = inla.zmarginal(dens,silent=TRUE)
-      hpds = inla.hpdmarginal(0.95,dens)
+      zmarg = INLA::inla.zmarginal(dens,silent=TRUE)
+      hpds = INLA::inla.hpdmarginal(0.95,dens)
       Hlower[i]=hpds[1]; Hupper[i]=hpds[2]
       Hqlower[i] = zmarg$quant0.025
       Hqmid[i] = zmarg$quant0.5
@@ -139,9 +138,9 @@ resultgather <- function(object,print.progress){
     cat("Storing everything in object$results..\n",sep="")
   }
   object$results = list(marginals = list(a=a_marg, b=b_marg, sigma=sigma_marg))
-  object$results$summary = list(a = list(inla.zmarginal(a_marg,silent=TRUE))[[1]],
-                                b = list(inla.zmarginal(b_marg,silent=TRUE))[[1]],
-                                sigma = list(inla.zmarginal(sigma_marg,silent=TRUE))[[1]])
+  object$results$summary = list(a = list(INLA::inla.zmarginal(a_marg,silent=TRUE))[[1]],
+                                b = list(INLA::inla.zmarginal(b_marg,silent=TRUE))[[1]],
+                                sigma = list(INLA::inla.zmarginal(sigma_marg,silent=TRUE))[[1]])
   object$results$summary$b$prob_positive=b_positive_prob
   if(tolower(object$.args$model) %in% c("ar1","ar(1)","1")){
     object$results$summary$phi = list(mean=phi_means,median=phi_median,sd=phi_sd,
@@ -152,8 +151,8 @@ resultgather <- function(object,print.progress){
       object$results$marginals$sigmaf = sigmaf_marg
       object$results$marginals$F0 = F0_marg
       
-      object$results$summary$sigmaf = inla.zmarginal(sigmaf_marg,silent=TRUE)
-      object$results$summary$F0 = inla.zmarginal(F0_marg,silent=TRUE)
+      object$results$summary$sigmaf = INLA::inla.zmarginal(sigmaf_marg,silent=TRUE)
+      object$results$summary$F0 = INLA::inla.zmarginal(F0_marg,silent=TRUE)
     }
   }else if(tolower(object$.args$model) %in% c("fgn","lrd")){
     object$results$summary$H = list(mean=Hmean,median=Hmedian,sd=Hsds,
@@ -163,8 +162,8 @@ resultgather <- function(object,print.progress){
       object$results$marginals$sigmaf = sigmaf_marg
       object$results$marginals$F0 = F0_marg
       
-      object$results$summary$sigmaf = inla.zmarginal(sigmaf_marg,silent=TRUE)
-      object$results$summary$F0 = inla.zmarginal(F0_marg,silent=TRUE)
+      object$results$summary$sigmaf = INLA::inla.zmarginal(sigmaf_marg,silent=TRUE)
+      object$results$summary$F0 = INLA::inla.zmarginal(F0_marg,silent=TRUE)
     }
   }
   
