@@ -9,6 +9,6 @@ License: MIT + file LICENSE
 Additional_repositories: https://inla.inla-r-download.org/R/testing
 LazyData: true
 Imports: INLA, Matrix, matrixStats, ggplot2, rlang
-Depends: R (>= 3.5)
+Depends: R (>= 4.1)
 Encoding: UTF-8
 RoxygenNote: 7.1.2
