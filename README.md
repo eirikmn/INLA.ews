@@ -43,7 +43,6 @@ for(i in 2:n){
   data[i] = rnorm(1, mean=phis[i]*data[i-1],sd=sigma)
 }
 object = inla.ews(data,model="ar1", memory.true=phis)
-plot(object)
 ```
 
 <embed src="man/figures/README-plot-1.pdf" width="100%" type="application/pdf" />

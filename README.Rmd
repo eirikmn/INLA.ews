@@ -49,11 +49,10 @@ for(i in 2:n){
   data[i] = rnorm(1, mean=phis[i]*data[i-1],sd=sigma)
 }
 object = inla.ews(data,model="ar1", memory.true=phis)
-plot(object)
 ```
 
 ```{r plot, eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
-library(ggplot2)
+require(ggplot2)
 plot.df = data.frame(time=object$.args$inladata$time,
                            mean=object$results$summary$phi$mean,
                            median=object$results$summary$phi$median,
