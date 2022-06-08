@@ -6,6 +6,7 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/eirikmn/INLA.ews/workflows/R-CMD-check/badge.svg)](https://github.com/eirikmn/INLA.ews/actions)
+[![R-CMD-check](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 This Repository contains the INLA.ews package for Bayesian detection of
