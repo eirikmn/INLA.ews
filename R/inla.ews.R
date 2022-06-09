@@ -118,8 +118,19 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",
     
   }
   
+  # find initial guesses for hyperparameters
+  if(length(forcing)>0){
+    sigma_ini = (data[n]-data[1])/(forcing[n]-forcing[1])
+    F0_ini = data[1]/sigma_ini-forcing[1]
+    
+  }else{
+    
+  }
+  formula = y ~ 1+ f(idy, model=rgen_model) #need an intercept
   
-  formula = y ~ -1+ f(idy, model=rgen_model)
+  
+  
+  
   if(print.progress){
     cat("Initiating inla program..\n",sep="")
   }

@@ -82,8 +82,6 @@ rgeneric.ews.ar1 = function(
     lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
     lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
     lprior = lprior + dnorm(theta[3],log=TRUE) #theta_a
-    # lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa
-    # lprior = lprior + dnorm(theta[5],log=TRUE) #F0
 
     return (lprior)
   }
