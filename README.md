@@ -5,7 +5,6 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/eirikmn/INLA.ews/workflows/R-CMD-check/badge.svg)](https://github.com/eirikmn/INLA.ews/actions)
 [![R-CMD-check](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
@@ -46,7 +45,9 @@ for(i in 2:n){
 object = inla.ews(data,model="ar1", memory.true=phis)
 ```
 
-<embed src="man/figures/README-plot-1.pdf" width="100%" type="application/pdf" />
+    #> Loading required package: ggplot2
+
+<img src="man/figures/README-plot-1.png" width="100%" />
 
 ## Attribution
 

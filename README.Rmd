@@ -9,7 +9,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
-  dev = "pdf",
+  dev = "png",
   out.width = "100%"
 )
 ```
@@ -17,7 +17,6 @@ knitr::opts_chunk$set(
 # INLA.ews
 
 <!-- badges: start -->
-  [![R-CMD-check](https://github.com/eirikmn/INLA.ews/workflows/R-CMD-check/badge.svg)](https://github.com/eirikmn/INLA.ews/actions)
 [![R-CMD-check](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
   
@@ -52,7 +51,7 @@ for(i in 2:n){
 object = inla.ews(data,model="ar1", memory.true=phis)
 ```
 
-```{r plot, eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+```{r plot, eval=TRUE, echo=FALSE}
 require(ggplot2)
 plot.df = data.frame(time=object$.args$inladata$time,
                            mean=object$results$summary$phi$mean,
