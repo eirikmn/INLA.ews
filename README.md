@@ -31,6 +31,7 @@ warning signals in the form of increasing correlation.
 
 ``` r
 library(INLA.ews)
+set.seed(0)
 n = 1000
 sigma = 1
 a=0.2
@@ -39,9 +40,11 @@ time = 1:n
 phis = a+b*time
 data=numeric(n)
 data[1] = rnorm(1,mean=0,sd=sigma)
+
 for(i in 2:n){
   data[i] = rnorm(1, mean=phis[i]*data[i-1],sd=sigma)
 }
+
 object = inla.ews(data,model="ar1", memory.true=phis)
 ```
 
