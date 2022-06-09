@@ -13,6 +13,17 @@ MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.or
 This Repository contains the INLA.ews package for Bayesian detection of
 early warning signals.
 
+When a dynamical system approaches a bifurcation point the state
+variable exhibits increased correlation and variance, this is also known
+as critical slowing down. Our model assumes that the memory coefficient
+increases linearly as a function of time, and uses the [R-INLA
+package](https://www.r-inla.org) to obtain the posterior marginal
+distributions. Of particular interest is the slope parameter which
+indicate whether or not correlation is increasing.
+
+INLA.ews currently supports time-dependent AR(1) and fGn processes,
+although the latter is far more computationally costly.
+
 ## Installation
 
 You can install the development version of INLA.ews from
@@ -31,6 +42,8 @@ warning signals in the form of increasing correlation.
 
 ``` r
 library(INLA.ews)
+
+# Set seed and parameters
 set.seed(0)
 n = 1000
 sigma = 1
@@ -38,13 +51,15 @@ a=0.2
 b=0.7/n
 time = 1:n
 phis = a+b*time
+
+# Simulate time dependent process
 data=numeric(n)
 data[1] = rnorm(1,mean=0,sd=sigma)
-
 for(i in 2:n){
   data[i] = rnorm(1, mean=phis[i]*data[i-1],sd=sigma)
 }
 
+# Run inla.ews
 object = inla.ews(data,model="ar1", memory.true=phis)
 ```
 

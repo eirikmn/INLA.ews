@@ -4,7 +4,7 @@
   
   <!-- README.md is generated from README.Rmd. Please edit that file -->
   
-  ```{r setup, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -21,13 +21,17 @@ knitr::opts_chunk$set(
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
   
-  This Repository contains the INLA.ews package for Bayesian detection of early warning signals.
+  This Repository contains the INLA.ews package for Bayesian detection of early warning signals. 
+  
+When a dynamical system approaches a bifurcation point the state variable exhibits increased correlation and variance, this is also known as critical slowing down. Our model assumes that the memory coefficient increases linearly as a function of time, and uses the [R-INLA package](https://www.r-inla.org) to obtain the posterior marginal distributions. Of particular interest is the slope parameter which indicate whether or not correlation is increasing. 
+  
+INLA.ews currently supports time-dependent AR(1) and fGn processes, although the latter is far more computationally costly.
 
 ## Installation
 
 You can install the development version of INLA.ews from [GitHub](https://github.com/) with:
   
-  ``` {r install, eval=FALSE}
+``` {r install, eval=FALSE}
 # install.packages("devtools")
 devtools::install_github("eirikmn/INLA.ews")
 ```
@@ -38,6 +42,8 @@ This is a basic example which shows you how to use the package to perform Bayesi
 
 ```{r example, eval=TRUE, message=FALSE, warning=FALSE}
 library(INLA.ews)
+
+# Set seed and parameters
 set.seed(0)
 n = 1000
 sigma = 1
@@ -45,13 +51,15 @@ a=0.2
 b=0.7/n
 time = 1:n
 phis = a+b*time
+
+# Simulate time dependent process
 data=numeric(n)
 data[1] = rnorm(1,mean=0,sd=sigma)
-
 for(i in 2:n){
   data[i] = rnorm(1, mean=phis[i]*data[i-1],sd=sigma)
 }
 
+# Run inla.ews
 object = inla.ews(data,model="ar1", memory.true=phis)
 ```
 
