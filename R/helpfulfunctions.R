@@ -35,3 +35,22 @@ sigmaHmaker = function(sigma,Hs){
 }
 
 
+compute.mu <- function(object,quick=FALSE,seed=1234,
+                       print.progress=FALSE){
+  model=object$.args$model
+  if(length(object$.args$forcing)==0){
+    return(object)
+  }
+  nsamples = object$results
+  if(print.progress){
+    cat("Starting mu Monte Carlo sampling with n=",format(nsamples,scientific=F)," simulations..\n",sep="")
+  }
+  n=nrow(object$.args$inladata)
+  hypersamples = inla.hyperpar.sample(nsamples,object$inlafit)
+  
+  sigmaf_samples = 1/sqrt(exp(hypersamples[,4]))
+  F0_samples = hypersamples[,5]
+  
+  
+}
+

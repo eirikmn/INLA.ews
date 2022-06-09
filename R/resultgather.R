@@ -158,6 +158,7 @@ resultgather <- function(object,print.progress){
     object$results$summary$H = list(mean=Hmean,median=Hmedian,sd=Hsds,
                                     q0.025=Hqlower,q0.5=Hqmid,q0.975=Hqupper,
                                     hpd0.95lower=Hlower,hpd0.95upper=Hupper)
+    object$results$simulations = list(H_sims = H_sims)
     if(length(object$.args$forcing)>0){
       object$results$marginals$sigmaf = sigmaf_marg
       object$results$marginals$F0 = F0_marg
