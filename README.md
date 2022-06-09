@@ -14,8 +14,8 @@ This Repository contains the INLA.ews package for Bayesian detection of
 early warning signals.
 
 When a dynamical system approaches a bifurcation point the state
-variable exhibits increased correlation and variance, this is also known
-as critical slowing down. Our model assumes that the memory coefficient
+variable exhibits increased correlation and variance, this is known as
+critical slowing down. Our model assumes that the memory coefficient
 increases linearly as a function of time, and uses the [R-INLA
 package](https://www.r-inla.org) to obtain the posterior marginal
 distributions. Of particular interest is the slope parameter which
