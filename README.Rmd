@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eirikmn/INLA.ews/actions/workflows/R-CMD-check.yaml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 <!-- badges: end -->
   
   This Repository contains the INLA.ews package for Bayesian detection of early warning signals. 
@@ -88,5 +88,5 @@ This code is associated and written for an upcoming paper. Feel free to use the 
 
 ## License
 
-The code in this repository is made available under the terms of the MIT License. For details, see LICENSE file.
+The code in this repository is made available under the terms of the GNU General Public License (GPL) version 2 License. For details, see LICENSE.md file.
 

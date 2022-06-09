@@ -1,14 +1,14 @@
 Package: INLA.ews
 Type: Package
 Title: Bayesian early warning detection
-Version: 0.1.1
+Version: 0.1.1.9000
 Authors@R: c(
    person("Eirik","myrvoll-Nilsen", email="eirikmn91@gmail.com",
           role=c("aut","cre","cph"),
           comment = c(ORCID = "0000-0002-1643-5661"))
              )
 Description: Fits a Bayesian hierarchical model with time-dependent memory to the supplied data using integrated nested Laplace approximations (INLAs).
-License: MIT + file LICENSE
+License: GPL (>= 2)
 Additional_repositories: https://inla.inla-r-download.org/R/testing
 Depends: R(>= 3.5), stats
 Imports: Matrix, rlang, matrixStats, ggplot2
