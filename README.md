@@ -25,9 +25,7 @@ devtools::install_github("eirikmn/INLA.ews")
 
 This is a basic example which shows you how to use the package to
 perform Bayesian analysis of a simulated time series which exhibit early
-warning signals in the form of increasing correlation. The ‘true’
-development of the autocorrelation coefficient is included in the
-resulting plot.
+warning signals in the form of increasing correlation.
 
 ``` r
 library(INLA.ews)
@@ -45,14 +43,17 @@ for(i in 2:n){
 object = inla.ews(data,model="ar1", memory.true=phis)
 ```
 
-    #> Loading required package: ggplot2
+The plot below shows the estimated posterior marginal mean for the
+lag-one correlation coefficient in the above example, with 95% credible
+intervals included. The black line represents the ‘true’ development of
+the memory.
 
-<img src="man/figures/README-plot-1.png" width="100%" />
+<img src="man/figures/README-plot-1.png" width="80%" />
 
 ## Attribution
 
 This code is associated and written for an upcoming paper. Feel free to
-use the code, but please cite the accompanying paper (when they are
+use the code, but please cite the accompanying paper (when it is
 published).
 
 ## License
