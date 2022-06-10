@@ -51,6 +51,7 @@ compute.mu <- function(object,quick=FALSE,seed=1234,
   sigmaf_samples = 1/sqrt(exp(hypersamples[,4]))
   F0_samples = hypersamples[,5]
   
+  memorysamples = object
   
 }
 
