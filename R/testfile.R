@@ -1,5 +1,5 @@
 if(FALSE){
-n = 300
+n = 200
 time=1:n
 a = 0.6
 b = 0.35/n
@@ -21,7 +21,7 @@ for(i in 1:n){
   muvek[i] = rev(struct[1:i])%*%z[1:i]
 }
 
-y=muvek+noise
+y=muvek+noise + 200
 plot(y,type="l",col="grey",lwd=1.1)
 #'
  object = INLA.ews::inla.ews(y,forcing,model="fgn",memory.true=Hs)

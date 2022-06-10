@@ -168,7 +168,7 @@ resultgather <- function(object,print.progress){
     }
   }
   
-      
+ object$results$fixed = object$inlafit$summary.fixed     
   
   return(object)
 }

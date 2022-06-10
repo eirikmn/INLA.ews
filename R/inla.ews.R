@@ -8,6 +8,9 @@
 #' @param formula Formula describing the linear predictor (NOT YET IMPLEMENTED)
 #' @param model Character string describing which noise model should be used.
 #' Currently supports \code{"ar1"} (default) and \code{"fgn"}.
+#' @param compute.mu Should the forced response be computed? Set to \code{0} if not, 
+#' \code{1} if only mean and standard deviation should be computed or \code{2} if quantiles
+#' should be computed (this is slower).
 #' @param inla.options List giving options (such as step length and the number of threads to be used),
 #' to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.
 #' @param print.progress boolean indicating whether or not progress should be printed to screen.
@@ -71,7 +74,7 @@
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
 #' @export
-inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",
+inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute.mu=0,
                      inla.options=NULL,print.progress=FALSE,
                      memory.true=NULL){
 
@@ -154,6 +157,12 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",
   time.start.gather = Sys.time()
   object = resultgather(object,print.progress=print.progress)
   time.gather = difftime(Sys.time(), time.start.gather,units="secs")[[1]]
+  
+  if(compute.mu >0){
+    if(compute.mu==2) object=forcingmaker(object,quick=FALSE,print.progress=print.progress)
+    if(compute.mu==1) object=forcingmaker(object,quick=TRUE,print.progress=print.progress)
+  }
+  
   time.total = difftime(Sys.time(), time.start,units="secs")[[1]]
   
   object$cpu.used = list(inla=object$inlafit$cpu.used[4],gather=time.gather,total=time.total)
