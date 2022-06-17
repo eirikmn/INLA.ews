@@ -149,7 +149,29 @@ rgeneric.ews.ar1.forcing = function(
     zz = 1/sqrt(params$kappa_f)*(params$F0+z)
     
     muvek = numeric(nn)
-    compute_mu_ar1(muvek, nn, zz,  params$phis)
+    
+    ## hideous hack to attempt to avoid error in linux (and windows probably)
+    if(Sys.info()[['sysname']] == "Darwin"){
+      compute_mu_ar1(muvek, nn, zz,  params$phis)
+      
+    }else if(Sys.info()[['sysname']] == "Linux"){
+      for(i in 1:nn){
+        muvek[i] = 0;
+        lambda = params$phis[i]-1;
+        for(j in 1:i){
+          muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
+        }
+      }
+    }else if(Sys.info()[['sysname']] == "Windows"){
+      for(i in 1:nn){
+        muvek[i] = 0;
+        lambda = params$phis[i]-1;
+        for(j in 1:i){
+          muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
+        }
+      }
+    }
+    
     
     
     return(muvek)

@@ -53,12 +53,12 @@ sigma = 1
 a=0.2
 b=0.7/n
 F0 = 3
-sigmaf = 2
+sigmaf = 0.3
 time = 1:n
 phis = a+b*time
 noise=ar1_timedep_sim(n,phis=phis)
 
-forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*7
+forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n
 zz = sigmaf*(F0+forcing)
 
 lambdas = phis-1
@@ -66,7 +66,7 @@ muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
 
 data = noise + muvek
 
-object = inla.ews(data,forcing,model="ar1", print.progress=TRUE,
+object = inla.ews(data,forcing,model="ar1",compute.mu=2, print.progress=TRUE,
                     memory.true=phis)
 summary(object)
 plot(object)
