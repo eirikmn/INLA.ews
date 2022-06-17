@@ -11,7 +11,14 @@ Description: Fits a Bayesian hierarchical model with time-dependent memory to th
 License: GPL (>= 2)
 Additional_repositories: https://inla.inla-r-download.org/R/testing
 Depends: R(>= 3.5), stats
-Imports: Matrix, rlang, matrixStats, ggplot2
+Imports: 
+    Matrix,
+    rlang,
+    matrixStats,
+    ggplot2,
+    Rcpp
 Suggests: graphics, INLA, knitr, rmarkdown, testthat
 Encoding: UTF-8
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0
+LinkingTo: 
+    Rcpp

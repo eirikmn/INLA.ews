@@ -9,6 +9,7 @@ inla.ews(
   forcing = numeric(0),
   formula = NULL,
   model = "ar1",
+  compute.mu = 0,
   inla.options = NULL,
   print.progress = FALSE,
   memory.true = NULL
@@ -24,6 +25,10 @@ is included, set to \code{numeric(0)} (default).}
 
 \item{model}{Character string describing which noise model should be used.
 Currently supports \code{"ar1"} (default) and \code{"fgn"}.}
+
+\item{compute.mu}{Should the forced response be computed? Set to \code{0} if not, 
+\code{1} if only mean and standard deviation should be computed or \code{2} if quantiles
+should be computed (this is slower).}
 
 \item{inla.options}{List giving options (such as step length and the number of threads to be used),
 to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.}
@@ -51,23 +56,15 @@ F0 = 3
 sigmaf = 2
 time = 1:n
 phis = a+b*time
-s=numeric(n)
-s[1] = rnorm(1,mean=0,sd=sigma)
-for(i in 2:n){
-  s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma)
-}
+noise=ar1_timedep_sim(n,phis=phis)
 
 forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*7
 zz = sigmaf*(F0+forcing)
 
 lambdas = phis-1
+muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
 
-struct = exp(lambdas*(1:n)-0.5)
-muvek=numeric(n)
-for(i in 1:n){
-  muvek[i] = rev(struct[1:i])\%*\%zz[1:i]
-}
-data = s + muvek
+data = noise + muvek
 
 object = inla.ews(data,forcing,model="ar1", print.progress=TRUE,
                     memory.true=phis)
@@ -83,9 +80,7 @@ a = 0.6
 b = 0.35/n
 Hs = a+b*time
 
-sigmat = sigmaHmaker(sigma,Hs)
-sigmachol = chol(sigmat)
-data = sigmachol\%*\%rnorm(n)
+data = fgn_timedep_sim(n,Hs=Hs)
 
 object = inla.ews(data,model="fgn",memory.true=Hs)
 summary(object)

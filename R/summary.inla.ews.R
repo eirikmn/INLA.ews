@@ -10,19 +10,16 @@
 #' @return  Returns an object of class \code{summary.inla.ews}.
 #' @examples 
 #' \donttest{
-#' n = 500
+#' n = 300
 #' sigma = 1
 #' a=0.2
 #' b=0.7/n
 #' time = 1:n
 #' phis = a+b*time
-#' s=numeric(n)
-#' s[1] = rnorm(1,mean=0,sd=sigma)
-#' for(i in 2:n){
-#'   s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma)
-#' }
+#' data=ar1_timedep_sim(n,phis=phis)
 #' 
-#' object = inla.ews(data=s,model="ar1", memory.true=phis)
+#' object = inla.ews(data,model="ar1", print.progress=TRUE,
+#'                     memory.true=phis)
 #' summary(object)
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
@@ -74,7 +71,8 @@ summary.inla.ews = function(object,digits=4L,...){
   rownames(hypers)=rownames
   out = c(out, hypers=list(hypers))
   out = c(out, b_positive = object$results$summary$b$prob_positive)
-  
+  n=length(object$.args$data)
+  out = c(out,list(n=n))
   if(tolower(object$.args$model) %in% c("ar1","ar(1)","1")){
     memorystart = c(object$results$summary$phi$mean[1],
                     object$results$summary$phi$sd[1],
@@ -106,9 +104,9 @@ summary.inla.ews = function(object,digits=4L,...){
   colnames(memorymat) = c("mean","sd","0.025quant","0.5quant","0.975quant")
   rownames(memorymat) = rownames
   out=c(out,list(memory=memorymat))
-  n=length(object$.args$data)
-  out = c(out,list(n=n))
   
+  
+  out = c(out, list(compute.mu=object$.args$compute.mu))
   
   if(!is.null(object$inlafit$dic)){
     out=c(out,list(dic=object$inlafit$dic))
@@ -142,15 +140,12 @@ summary.inla.ews = function(object,digits=4L,...){
 #' b=0.7/n
 #' time = 1:n
 #' phis = a+b*time
-#' s=numeric(n)
-#' s[1] = rnorm(1,mean=0,sd=sigma)
-#' for(i in 2:n){
-#'   s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma)
-#' }
+#' data=ar1_timedep_sim(n,phis=phis)
 #' 
-#' object = inla.ews(data=s,model="ar1", memory.true=phis)
-#' sumob = summary(object)
-#' print(sumob)
+#' object = inla.ews(data,model="ar1", print.progress=TRUE,
+#'                     memory.true=phis)
+#' summaryobj = summary(object)
+#' print(summaryobj)
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews},\link{summary.inla.ews}}
@@ -161,7 +156,14 @@ print.summary.inla.ews = function(x,digits=4L,...){
   cat("Time used:\n")
   print(round(x$cpu,digits=digits))
   #cat("\n",sep="")
+  
   cat("\nPosterior marginal distributions for all hyperparameters have been computed.\n",sep="")
+  if(x$compute.mu==2 && x$is.forcing){
+    cat("Mean and 95% credible intervals for forced response have also been computed.\n",sep="")
+  }else if(x$compute.mu==1 && x$is.forcing){
+    cat("Mean and standard deviation for forced response have also been computed.\n",sep="")
+  }
+  
   if(x$is.forcing){
     cat("\nSummary statistics for using ",x$model," model (with forcing):\n",sep="")
   }else{

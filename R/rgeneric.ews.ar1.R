@@ -3,7 +3,6 @@
 #' Defines the rgeneric model structure for the AR(1) model with time-dependent
 #' correlation. This includes key functions that provide information on precision matrix, mean vector, priors, graph etc.
 #' This is intended for internal use only, but the documentation is included here in case someone want to change something.
-#'  See example below for how rgeneric is used can be used.
 #'
 #' @param cmd Vector containing list of function names necessary for the rgeneric model.
 #' @param theta Vector describing the hyperparameters in internal scaling.
@@ -39,13 +38,6 @@ rgeneric.ews.ar1 = function(
   }
 
   mu = function() {
-    if(!is.null(envir)){
-      nn=get("n",envir)
-      
-    }else{
-      nn=get("n",environment())
-      
-    }
       return(numeric(0))
     
   }
@@ -107,7 +99,6 @@ rgeneric.ews.ar1 = function(
 #' Defines the rgeneric model structure for the AR(1) model with time-dependent
 #' correlation. This model includes forcing. This includes key functions that provide information on precision matrix, mean vector, priors, graph etc.
 #' This is intended for internal use only, but the documentation is included here in case someone want to change something.
-#'  See example below for how rgeneric is used can be used.
 #'
 #' @param cmd Vector containing list of function names necessary for the rgeneric model.
 #' @param theta Vector describing the hyperparameters in internal scaling.
@@ -118,6 +109,7 @@ rgeneric.ews.ar1.forcing = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
 {
+  require(INLA.ews,quietly=TRUE)
   tau = exp(15)
   envir = environment(sys.call()[[1]])
   
@@ -144,6 +136,7 @@ rgeneric.ews.ar1.forcing = function(
     return(list(phis = phis, kappa_eps = kappa_eps, a=a,b=b,kappa_f=kappa_f,F0=F0))
   }
   
+  
   mu = function() {
     if(!is.null(envir)){
       nn=get("n",envir)
@@ -153,14 +146,11 @@ rgeneric.ews.ar1.forcing = function(
       z = get("forcing",environment())
     }
     params=interpret.theta()
-    lambdas = params$phis-1
-    
     zz = 1/sqrt(params$kappa_f)*(params$F0+z)
-    struct = exp(lambdas*(1:nn)-0.5)
-    muvek=numeric(nn)
-    for(i in 1:nn){
-      muvek[i] = rev(struct[1:i])%*%zz[1:i]
-    }
+    
+    muvek = numeric(nn)
+    compute_mu_ar1(muvek, nn, zz,  params$phis)
+    
     
     return(muvek)
   }

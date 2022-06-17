@@ -6,8 +6,8 @@
 \usage{
 \method{plot}{inla.ews}(
   x,
-  plot.options = list(plot.hyper = TRUE, plot.memory = TRUE, use.median = TRUE,
-    memory.true = TRUE),
+  plot.options = list(plot.hyper = TRUE, plot.forced = TRUE, plot.memory = TRUE,
+    use.median = TRUE, memory.true = TRUE),
   postscript = FALSE,
   pdf = FALSE,
   prefix = "INLA.ews.plots/figure-",
@@ -38,14 +38,12 @@ a=0.2
 b=0.7/n
 time = 1:n
 phis = a+b*time
-s=numeric(n)
-s[1] = rnorm(1,mean=0,sd=sigma)
-for(i in 2:n){
-  s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma)
-}
+data=ar1_timedep_sim(n,phis=phis)
 
-object = inla.ews(data=s,model="ar1", memory.true=phis)
+object = inla.ews(data,model="ar1", print.progress=TRUE,
+                    memory.true=phis)
 plot(object)
+
 }
 
 }

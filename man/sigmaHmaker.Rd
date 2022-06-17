@@ -23,7 +23,7 @@ assumption that the Hurst exponent changes over time. In the context of the
 \code{inla.ews} package this function is only used for simulating examples.
 }
 \examples{
-n=100
+n=50
 Hs = seq(from=0.6,to=0.8,length.out=n)
 sigma = 1
 cov.matrix <- sigmaHmaker(sigma,Hs)

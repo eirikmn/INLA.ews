@@ -17,27 +17,29 @@
 #' b=0.7/n
 #' time = 1:n
 #' phis = a+b*time
-#' s=numeric(n)
-#' s[1] = rnorm(1,mean=0,sd=sigma)
-#' for(i in 2:n){
-#'   s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma)
-#' }
+#' data=ar1_timedep_sim(n,phis=phis)
 #' 
-#' object = inla.ews(data=s,model="ar1", memory.true=phis)
+#' object = inla.ews(data,model="ar1", print.progress=TRUE,
+#'                     memory.true=phis)
 #' plot(object)
+#' 
 #' }
 #'
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords inla.ews plot
-#' @importFrom ggplot2 ggplot xlab ylab geom_line theme_bw geom_ribbon aes ylim
+#' @importFrom ggplot2 ggplot xlab ylab geom_line theme_bw geom_ribbon aes ylim 
+#' geom_point labs
 #' @importFrom graphics abline par
 #' @importFrom rlang .data
 #' @importFrom grDevices dev.cur dev.new dev.off
 #' @export
 plot.inla.ews <- function(x,
-                          plot.options=list(plot.hyper=TRUE,plot.memory=TRUE,
-                                            use.median=TRUE,memory.true=TRUE),
+                          plot.options=list(plot.hyper=TRUE,
+                                            plot.forced=TRUE,
+                                            plot.memory=TRUE,
+                                            use.median=TRUE,memory.true=TRUE
+                                            ),
                           postscript=FALSE,
                           pdf=FALSE,
                           prefix = "INLA.ews.plots/figure-",
@@ -65,7 +67,8 @@ plot.inla.ews <- function(x,
         figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
         par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
         name = names(x$results$marginals)[i]
-        plot(x$results$marginals[[name]],type="l",ylab="Density",xlab=name)
+        plot(x$results$marginals[[name]],type="l",ylab="Density",xlab=name,
+             main="Posterior distribution")
         abline(v=x$results$summary[[name]]$mean)
         abline(v=c(x$results$summary[[name]]$quant0.025,x$results$summary[[name]]$quant0.975),col="red")
         
@@ -79,6 +82,34 @@ plot.inla.ews <- function(x,
     
   }
 
+  
+  if(plot.options$plot.forced && !is.null(x$forced)){
+    figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
+    par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
+    ggd = data.frame(y=x$.args$data,time=x$.args$inladata$time,
+                     mean=x$forced$mean)
+    if(!is.null(x$forced$quant0.025)){
+      ggd$lower = x$forced$quant0.025
+      ggd$upper = x$forced$quant0.975
+    }
+    gg = ggplot(ggd,aes(.data$time)) + theme_bw()+ 
+      xlab("Time")+ylab("Observations")+
+      labs(title="Forced response")+
+      geom_point(aes(y=.data$y),color="gray",size=2.5)
+    if(!is.null(x$forced$quant0.025)){
+      #gg = gg + geom_line(aes(y=.data$lower),col="")
+      gg = gg + geom_ribbon(aes(ymin=.data$lower,ymax=.data$upper),color="red",
+                            fill="red",alpha=0.3,size=0.9)
+    }
+    gg = gg + geom_line(aes(y=.data$mean),color="blue",size=1.1)
+    print(gg)
+    if(postscript || pdf){
+      if (names(dev.cur()) != "null device") {
+        dev.off()
+      }
+    }
+  }
+  
   if(plot.options$plot.memory){
     if(tolower(x$.args$model) %in% c("ar1","ar(1)","1")){
       plot.df = data.frame(time=x$.args$inladata$time,
@@ -101,7 +132,8 @@ plot.inla.ews <- function(x,
     par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
     gg2 <- ggplot(data=plot.df,aes(x=.data$time)) + 
       geom_ribbon(aes(ymin=.data$lower,ymax=.data$upper),color="red",fill="red",alpha=0.3)+
-      theme_bw()+ylab(ylab)+xlab("Time")+ylim(ylim)
+      theme_bw()+ylab(ylab)+xlab("Time")+ylim(ylim)+
+      labs(title="Evolution of memory parameter")
     if(plot.options$use.median){
       gg2 <- gg2 + geom_line(aes(y=.data$median),color="blue")
     }else{

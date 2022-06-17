@@ -24,15 +24,12 @@ a=0.2
 b=0.7/n
 time = 1:n
 phis = a+b*time
-s=numeric(n)
-s[1] = rnorm(1,mean=0,sd=sigma)
-for(i in 2:n){
-  s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma)
-}
+data=ar1_timedep_sim(n,phis=phis)
 
-object = inla.ews(data=s,model="ar1", memory.true=phis)
-sumob = summary(object)
-print(sumob)
+object = inla.ews(data,model="ar1", print.progress=TRUE,
+                    memory.true=phis)
+summaryobj = summary(object)
+print(summaryobj)
 }
 }
 \seealso{

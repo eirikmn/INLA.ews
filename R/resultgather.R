@@ -168,7 +168,11 @@ resultgather <- function(object,print.progress){
     }
   }
   
- object$results$fixed = object$inlafit$summary.fixed     
+  if(!is.null(object$inlafit$summary.fixed)){
+    object$results$fixed = object$inlafit$summary.fixed     
+  }else{
+    object$results$fixed = mean(object$.args$data[1:20])
+  }
   
   return(object)
 }

@@ -9,41 +9,47 @@
 #'
 #'
 #' @importFrom stats dnorm
-rgeneric.ews.fgn = function(
+rgeneric.ews.fgn2 = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
 {
-
   
   # require("INLA.climate2",quietly=TRUE)
-
+  
   tau = exp(15)
   envir = environment(sys.call()[[1]])
-
+  
   interpret.theta = function() {
     if(!is.null(envir)){
-      timee=get("time",envir)
       nn=get("n",envir)
     }
     kappa = exp(theta[1])
-    bmax = 0.5/(timee[nn]-timee[1])
-    bmin = -bmax
-    b = bmin+(bmax-bmin)/(1+exp(-theta[2]))
-
-    low = min(b*timee[1],b*timee[nn])
-    high = max(b*timee[1],b*timee[nn])
-    amin = 0.5-low
-    amax = 1-high
-    a = amin + (amax-amin)/(1+exp(-theta[3]))
-
-    Hs = a+b*timee
-    return(list(Hs = Hs, kappa = kappa, a=a,b=b,amin=amin,amax=amax,bmin=bmin,bmax=bmax))
+    c = exp(theta[4])
+    sa = 0.5
+    sb=1
+    sbar = sb-sa
+    b = -sbar + (2*sbar)/(1+exp(-theta[3]))
+    alower = sa-min(b*t)
+    aupper = sb-max(b*t)
+    a = alower+ (aupper-alower)/(1+exp(-theta[2]))
+    
+    time = seq(from=0,to=1,length.out=nn)
+    
+    memory = a+b*time^c
+    return(list(memory = memory,time=time, kappa = kappa, 
+                a=a,b=b,c=c))
   }
   mu = function() {
-    
-      return(numeric(0))
+    if(!is.null(envir)){
+      nn=get("n",envir)
+      
+    }else{
+      nn=get("n",environment())
+      
+    }
+    return(numeric(0))
   }
-
+  
   graph = function()
   {
     if(!is.null(envir)){
@@ -53,17 +59,17 @@ rgeneric.ews.fgn = function(
     }
     return (matrix(1,nn,nn))
   }
-
+  
   Q = function()  {
     if(!is.null(envir)){
       nn=get("n",envir)
     }
-
+    
     hyperparam = interpret.theta()
-    Hs = hyperparam$Hs
+    memory = hyperparam$memory
     kappa = hyperparam$kappa
     sx = 1/sqrt(hyperparam$kappa)
-    H2 = 2*Hs
+    H2 = 2*memory
     k=0:(nn-1)
     sigmat = matrix(NA,nn,nn)
     for(i in 1:nn){
@@ -74,14 +80,14 @@ rgeneric.ews.fgn = function(
       }
     }
     #sigmat = sigmamaker(nn,sx,Hs)
-
+    
     return (solve(sigmat))
   }
-
+  
   log.norm.const = function(){
     return(numeric(0))
   }
-
+  
   log.prior = function()  {
     # if(!is.null(envir)){
     #   nn=get("n",envir)
@@ -92,6 +98,7 @@ rgeneric.ews.fgn = function(
     lprior = INLA::inla.pc.dprec(params$kappa, u=1, alpha=0.01, log=TRUE) + log(params$kappa) #kappa
     lprior = lprior + dnorm(theta[2],log=TRUE) #theta_a
     lprior = lprior + dnorm(theta[3],log=TRUE) #theta_b
+    lprior = lprior + dnorm(theta[4],log=TRUE) #theta_c
     
     # if(length(z)>0){
     #   lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa_f
@@ -105,7 +112,7 @@ rgeneric.ews.fgn = function(
     # if(length(z)>0){
     #   ini = c(0.,0.,0.,0.,0.)
     # }else{
-      ini = c(0.,0.,0.)
+    ini = c(0.,0.,0.,0.)
     # }
     return (ini)
   }
@@ -114,7 +121,7 @@ rgeneric.ews.fgn = function(
   }
   if(is.null(theta)){
     theta = initial()
-
+    
   }
   cmd = match.arg(cmd)
   val = do.call(cmd, args = list())
@@ -134,36 +141,39 @@ rgeneric.ews.fgn = function(
 #'
 #'
 #' @importFrom stats dnorm
-rgeneric.ews.fgn.forcing = function(
+rgeneric.ews.fgn.forcing2 = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
 {
-  require(INLA.ews,quietly=TRUE)
+  
+  
+  
   tau = exp(15)
   envir = environment(sys.call()[[1]])
-
+  
   interpret.theta = function() {
     if(!is.null(envir)){
       timee=get("time",envir)
       nn=get("n",envir)
     }
     kappa = exp(theta[1])
-    bmax = 0.5/(timee[nn]-timee[1])
-    bmin = -bmax
-    b = bmin+(bmax-bmin)/(1+exp(-theta[2]))
-
-    low = min(b*timee[1],b*timee[nn])
-    high = max(b*timee[1],b*timee[nn])
-    amin = 0.5-low
-    amax = 1-high
-    a = amin + (amax-amin)/(1+exp(-theta[3]))
-
-    Hs = a+b*timee
+    c = exp(theta[4])
+    sa = 0.5
+    sb=1
+    sbar = sb-sa
+    b = -sbar + (2*sbar)/(1+exp(-theta[3]))
+    alower = sa-min(b*t)
+    aupper = sb-max(b*t)
+    a = alower+ (aupper-alower)/(1+exp(-theta[2]))
+    
+    time = seq(from=0,to=1,length.out=nn)
+    
+    memory = a+b*time^c
     kappa_f = exp(theta[4])
     F0 = theta[5]
-    return(list(Hs = Hs, kappa = kappa, a=a,b=b,amin=amin,amax=amax,bmin=bmin,bmax=bmax,kappa_f=kappa_f,F0=F0))
+    return(list(memory = memory, kappa = kappa, 
+                a=a,b=b,c=c,kappa_f=kappa_f,F0=F0))
   }
-  
   mu = function() {
     if(!is.null(envir)){
       nn=get("n",envir)
@@ -172,58 +182,43 @@ rgeneric.ews.fgn.forcing = function(
       nn=get("n",environment())
       z = get("forcing",environment())
     }
-
+    
     params = interpret.theta()
-    Hs = params$Hs
     #cat("F0: ",params$F0," sigmaf: ",1/sqrt(params$kappa_f),"\n")
     zz = 1/sqrt(params$kappa_f)*(params$F0+z)
+    struct = (1:nn-0.5)^(params$memory-3/2)
+    muvek=numeric(nn)
+    for(i in 1:nn){
+      muvek[i] = rev(struct[1:i])%*%zz[1:i]
+    }
     
-      # struct = (1:nn-0.5)^(Hs-3/2)
-      # muvek0=numeric(nn)
-      # for(i in 1:nn){
-      #   muvek0[i] = rev(struct[1:i])%*%zz[1:i]
-      # }
-    # # greensmat = greensmaker_fgn(params$Hs)
-    # muvek = greensmat%*%zz
     
-    muvek = numeric(nn)
-    compute_mu_fgn(muvek, nn, zz,  Hs)
-     # muvek=numeric(nn)
-     # #struct=numeric(nn)
-     # struct = (1:nn-0.5)^(Hs-3/2)
-     # for(i in 1:nn){
-     #   for(j in 1:i){
-     #     muvek[i] = muvek[i] + zz[j]*(i-j+0.5)^(Hs[i]-3/2) #struct[i-j+1]
-     #   }
-     # }
-    
-    #cat("mu range:",range(muvek))
     return(muvek)
   }
-
+  
   graph = function()
   {
     if(!is.null(envir)){
       nn=get("n",envir)
-
+      
     }else{
       nn=get("n",environment())
-
+      
     }
-
+    
     return (matrix(1,nn,nn))
   }
-
+  
   Q = function()  {
     if(!is.null(envir)){
       nn=get("n",envir)
     }
-
+    
     hyperparam = interpret.theta()
-    Hs = hyperparam$Hs
+    memory = hyperparam$memory
     kappa = hyperparam$kappa
     sx = 1/sqrt(hyperparam$kappa)
-    H2 = 2*Hs
+    H2 = 2*memory
     k=0:(nn-1)
     sigmat = matrix(NA,nn,nn)
     for(i in 1:nn){
@@ -234,25 +229,26 @@ rgeneric.ews.fgn.forcing = function(
       }
     }
     #sigmat = sigmamaker(nn,sx,Hs)
-
+    
     return (solve(sigmat))
   }
-
+  
   log.norm.const = function(){
     return(numeric(0))
   }
-
+  
   log.prior = function()  {
     params = interpret.theta()
     lprior = INLA::inla.pc.dprec(params$kappa, u=1, alpha=0.01, log=TRUE) + log(params$kappa) #kappa_x
     lprior = lprior + dnorm(theta[2],log=TRUE) #theta_a
     lprior = lprior + dnorm(theta[3],log=TRUE) #theta_b
+    lprior = lprior + dnorm(theta[4],log=TRUE) #theta_c
     lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa_f
-    lprior = lprior + dnorm(theta[5],sd=5,log=TRUE) #F0
+    lprior = lprior + dnorm(theta[5],sd=6,log=TRUE) #F0
     return (lprior)
   }
   initial = function(){
-    ini = c(0.,0.,0.,0.,0.)
+    ini = c(0.,0.,0.,0.,0.,0.)
     return (ini)
   }
   quit = function()  {
@@ -260,7 +256,7 @@ rgeneric.ews.fgn.forcing = function(
   }
   if(is.null(theta)){
     theta = initial()
-
+    
   }
   cmd = match.arg(cmd)
   val = do.call(cmd, args = list())

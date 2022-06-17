@@ -18,5 +18,4 @@ rgeneric.ews.fgn.forcing(
 Defines the rgeneric model structure for the fractional Gaussian noise model 
 with time-dependent correlation. This model includes forcing. This includes key functions that provide information on precision matrix, mean vector, priors, graph etc.
 This is intended for internal use only, but the documentation is included here in case someone want to change something.
- See example below for how rgeneric is used can be used.
 }
