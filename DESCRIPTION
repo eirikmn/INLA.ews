@@ -9,7 +9,7 @@ Authors@R: c(
              )
 Description: Fits a Bayesian hierarchical model with time-dependent memory to the supplied data using integrated nested Laplace approximations (INLAs).
 License: GPL (>= 2)
-Additional_repositories: https://inla.inla-r-download.org/R/stable
+Additional_repositories: https://inla.inla-r-download.org/R/testing
 Depends: R(>= 3.5), stats
 Imports: 
     Matrix,
