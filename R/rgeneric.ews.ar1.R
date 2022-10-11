@@ -60,7 +60,7 @@ rgeneric.ews.ar1 = function(
       timee=get("time",envir)
     }
     params = interpret.theta()
-    phis = params$a+params$b*timee
+    phis = params$phis
     kappa_eps = params$kappa_eps
     kappa1=kappa_eps
     ii=c(1,nn,2:(nn-1),1:(nn-1));jj=c(1,nn,2:(nn-1),2:nn)
@@ -72,8 +72,11 @@ rgeneric.ews.ar1 = function(
   log.prior = function(){
     params = interpret.theta()
     lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
-    lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
-    lprior = lprior + dnorm(theta[3],log=TRUE) #theta_a
+    #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
+    b=params$b; ra = 0; rb=1
+    lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
+    #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
+    lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
 
     return (lprior)
   }
@@ -150,27 +153,35 @@ rgeneric.ews.ar1.forcing = function(
     
     muvek = numeric(nn)
     
-    ## hideous hack to attempt to avoid error in linux (and windows probably)
-    if(Sys.info()[['sysname']] == "Darwin"){
-      compute_mu_ar1(muvek, nn, zz,  params$phis)
-      
-    }else if(Sys.info()[['sysname']] == "Linux"){
-      for(i in 1:nn){
-        muvek[i] = 0;
-        lambda = params$phis[i]-1;
-        for(j in 1:i){
-          muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
-        }
-      }
-    }else if(Sys.info()[['sysname']] == "Windows"){
-      for(i in 1:nn){
-        muvek[i] = 0;
-        lambda = params$phis[i]-1;
-        for(j in 1:i){
-          muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
-        }
+    for(i in 1:nn){
+      muvek[i] = 0;
+      lambda = params$phis[i]-1;
+      for(j in 1:i){
+        muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
       }
     }
+    
+    ## hideous hack to attempt to avoid error in linux (and windows probably)
+    # if(Sys.info()[['sysname']] == "Darwin"){
+    #   compute_mu_ar1(muvek, nn, zz,  params$phis)
+    #   
+    # }else if(Sys.info()[['sysname']] == "Linux"){
+    #   for(i in 1:nn){
+    #     muvek[i] = 0;
+    #     lambda = params$phis[i]-1;
+    #     for(j in 1:i){
+    #       muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
+    #     }
+    #   }
+    # }else if(Sys.info()[['sysname']] == "Windows"){
+    #   for(i in 1:nn){
+    #     muvek[i] = 0;
+    #     lambda = params$phis[i]-1;
+    #     for(j in 1:i){
+    #       muvek[i] = muvek[i]+ exp(lambda*(i-j+0.5))*zz[j];
+    #     }
+    #   }
+    # }
     
     
     

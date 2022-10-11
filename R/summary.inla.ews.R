@@ -175,7 +175,7 @@ print.summary.inla.ews = function(x,digits=4L,...){
   print(x$memory)
   
   
-  cat("\nprobability of positive trend is ",x$b_positive,"\n",sep="")
+  cat("\nProbability of positive trend is ",x$b_positive,"\n",sep="")
   if(!is.null(x$dic)){
     cat(paste0("Deviance Information Criterion (DIC) ...: ",
                format(x$dic$dic, digits=digits, nsmall=2), "\n",

@@ -55,25 +55,28 @@ sigmaHmaker = function(sigma,Hs){
 #' 
 #' @examples 
 #' \donttest{
-#' n = 200
+#' set.seed(123)
+#' n = 300
 #' time=1:n
-#' a = 0.6
+#' a = 0.5
 #' b = 0.35/n
-#' Hs = a+b*time
+#' phis = a+b*time
 #' F0 = -3
-#' sigmaf=0.1
+#' sigmaf=0.7
 #' sigma = 1.2
 #' 
-#' s = fgn_timedep_sim(n,Hs=Hs)
-#' forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*7
-#' muvek = mu.computer(forcing,sigmaf,F0,memory=Hs,model="fgn")
+#' s = ar1_timedep_sim(n,phis=phis)
+#' forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*5
+#' muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
 #' data = s + muvek
-#' object = inla.ews(data,forcing,model="fgn",memory.true=Hs)
+#' object = inla.ews(data,forcing,model="ar1",memory.true=phis)
 #' 
 #' object = forcingmaker(object,quick=FALSE,print.progress=TRUE,
 #'                     intercept=object$.args$intercept)
 #' summary(object)
 #' plot(object)
+#' 
+#' 
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}, \link{mu.computer}}
@@ -136,11 +139,16 @@ forcingmaker <- function(object,quick=FALSE,seed=1234,intercept=0,
     }
     muvek = numeric(n)
     zz = sigmaf_samples[iter]*(F0_samples[iter]+forcing)
-    if(tolower(model) %in% c("ar1","ar(1)","1")){
-      compute_mu_ar1(muvek, n, zz, memorysamples[,iter])
-    }else if(tolower(model) %in% c("fgn","lrd")){
-      compute_mu_ar1(muvek, n, zz, memorysamples[,iter])
-    }
+    
+    muvek = mu.computer(forcing,sigmaf=sigmaf_samples[iter],
+                        F0=F0_samples[iter],
+                        memory=memorysamples[,iter],
+                        model=model)
+    # if(tolower(model) %in% c("ar1","ar(1)","1")){
+    #   compute_mu_ar1(muvek, n, zz, memorysamples[,iter])
+    # }else if(tolower(model) %in% c("fgn","lrd")){
+    #   compute_mu_fgn(muvek, n, zz, memorysamples[,iter])
+    # }
     
     if(!quick){
       meanmat[,iter]=muvek
@@ -197,6 +205,8 @@ return(object)
   
 }
 
+
+
 #' Computes the forced response
 #' 
 #' This function computes the forced response given known forcing and memory development.
@@ -239,11 +249,11 @@ mu.computer <- function(forcing,sigmaf,F0,a=0.6,b=0.2,memory=NULL,model="ar1"){
   zz = as.numeric(sigmaf*(F0+forcing))
   if(tolower(model) %in% c("ar1","ar(1)","1")){
     lambdas = memory-1
-    if(TRUE){
+    if(FALSE){
       start0=Sys.time()
       
       mu = numeric(n)
-      compute_mu_ar1(mu, n, zz,  memory)
+      # compute_mu_ar1(mu, n, zz,  memory)
       # 
       # xx = exp(lambdas[ii]*(ii-jj+0.5))
       # G = sparseMatrix(i=ii,j=jj,x=xx,symmetric=FALSE)
@@ -258,9 +268,9 @@ mu.computer <- function(forcing,sigmaf,F0,a=0.6,b=0.2,memory=NULL,model="ar1"){
       time1 = Sys.time()-start1
     }
   }else if(tolower(model) %in% c("fgn","lrd")){
-    if(TRUE){
+    if(FALSE){
       mu = numeric(n)
-      compute_mu_fgn(mu, n, zz,  memory)
+      # compute_mu_fgn(mu, n, zz,  memory)
       # xx = (ii-jj+0.5)^(memory[ii]-3/2)
       # G = sparseMatrix(i=ii,j=jj,x=xx,symmetric=FALSE)
       # mu = G%*%zz
@@ -338,3 +348,66 @@ fgn_timedep_sim <- function(n,sigma=1,a=0.6,b=0.3,Hs=NULL){
 
 
 
+#' Default variables in events
+#'
+#' Sets the default variables in the list \code{events} used to specify the climatic
+#' periods and separating events used in the linear predictor. The list contains the following arguments:
+#' \itemize{
+#'   \item{\code{num.threads} }{Integer describing the number of cores used by the INLA program. 
+#'   For rgeneric models, stabiltiy is sometimes improved by setting this equal to \code{1} (default).}
+#'   \item{\code{control.inla} }{List containing \code{h=0.01} and \code{restart=1}. 
+#'   \code{h} denotes the step size. Changing this might help reach convergence. 
+#'   \code{restart} is an integer indicating how many times INLA should be restart to 
+#'   at the found optimum. This might help improve the accuracy of the optimization procedure.}
+#'   \item{\code{control.family} }{List with settings to tell INLA to set the variance of the 
+#'   Gaussian likelihood to be fixed and equal to \code{exp(-12)}.}
+#' }
+#' @return Returns a list including default values for all variables in \code{inla.options}.
+#'
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords inla.ews inla options default
+#'
+inla.options.default <- function(){
+  return(list(
+    num.threads=1,
+    control.mode=list(restart=TRUE),
+    control.inla=list(h=0.01,restart=1),
+    control.family = list(hyper = list(prec = list(initial = 12, fixed=TRUE)))
+  )
+  )
+}
+
+#' Import default arguments
+#'
+#' Fills out missing arguments in list \code{opt} with default arguments in list
+#' \code{default.opt}.
+#' @param opt List object with different specifications.
+#' @param default.opt List of default variables corresponding to \code{opt}.
+#'
+#' @return Returns the \code{opt} list, but with values from \code{default.opt} inserted
+#' in missing values.
+#'
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords inla.ews default
+set.options <- function(opt,default.opt){
+  temp = default.opt
+  
+  if(length(opt)>0){
+    for(i in 1:length(opt)){
+      if(names(opt)[i] %in% names(default.opt)){
+        if(!is.list(opt[[i]])){
+          temp[[ names(opt)[i] ]] <- opt[[i]]
+        }else{
+          for(j in 1:length(opt[[i]])){
+            temp[[ names(opt)[i] ]][[names(opt[[i]])[j]]] <- opt[[i]][[j]]
+          }
+        }
+      }else{
+        temp[[names(opt)[i]]] <- opt[[i]]
+      }
+    }
+  }
+  return(temp)
+}

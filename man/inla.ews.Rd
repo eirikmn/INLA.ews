@@ -10,6 +10,9 @@ inla.ews(
   formula = NULL,
   model = "ar1",
   compute.mu = 0,
+  timesteps = NULL,
+  stepsize = 0.01,
+  num.threads = 1,
   inla.options = NULL,
   print.progress = FALSE,
   memory.true = NULL
@@ -30,6 +33,16 @@ Currently supports \code{"ar1"} (default) and \code{"fgn"}.}
 \code{1} if only mean and standard deviation should be computed or \code{2} if quantiles
 should be computed (this is slower).}
 
+\item{timesteps}{Numeric vector describing time steps of input variables (if steps are not equidistant).}
+
+\item{stepsize}{Numeric stating the step size used in the optimization procedure in 
+the INLA program. If convergence cannot be achieved, then changing this will sometimes help. 
+Default value is \code{stepsize=0.01}.}
+
+\item{num.threads}{Integer stating how many cores should be used by the INLA program. 
+For rgeneric models (as is used here) stability is sometimes improved if \code{num.threads=1}, 
+which is the default value here. Increasing this might improve runtime.}
+
 \item{inla.options}{List giving options (such as step length and the number of threads to be used),
 to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.}
 
@@ -48,6 +61,7 @@ Fits a Bayesian hierarchical model with time-dependent correlation using INLA.
 \examples{
 \donttest{
 ### AR(1) simulation example ###
+set.seed(123)
 n = 300
 sigma = 1
 a=0.2
@@ -73,6 +87,7 @@ plot(object)
 
 
 ### fGn simulation example ###
+set.seed(123)
 n=200
 sigma = 1.2
 time=1:n
@@ -85,6 +100,7 @@ data = fgn_timedep_sim(n,Hs=Hs)
 object = inla.ews(data,model="fgn",memory.true=Hs)
 summary(object)
 plot(object)
+
 
 }
 }

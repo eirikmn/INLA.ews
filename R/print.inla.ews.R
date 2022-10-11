@@ -75,7 +75,7 @@ print.inla.ews = function(x,digits=4L,...){
   }
   print(hypers)
   
-  cat("\nprobability of positive trend is ",x$results$summary$b$prob_positive,"\n",sep="")
+  cat("\nProbability of positive trend is ",x$results$summary$b$prob_positive,"\n",sep="")
   
   if(!is.null(x$inlafit$mlik)){
     cat(paste("\nMarginal log-Likelihood: ", format(x$inlafit$mlik[2], digits=digits, nsmall=2),"\n",sep=""))

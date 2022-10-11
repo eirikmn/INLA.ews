@@ -185,23 +185,28 @@ rgeneric.ews.fgn.forcing = function(
       # }
     # # greensmat = greensmaker_fgn(params$Hs)
     # muvek = greensmat%*%zz
-    
     muvek = numeric(nn)
-    if(Sys.info()[['sysname']] == "Darwin"){
-    compute_mu_fgn(muvek, nn, zz,  Hs)
-    }else if(Sys.info()[['sysname']] == "Linux"){
-       for(i in 1:nn){
-         for(j in 1:i){
-           muvek[i] = muvek[i] + zz[j]*(i-j+0.5)^(Hs[i]-3/2) #struct[i-j+1]
-         }
-       }
-    }else if(Sys.info()[['sysname']] == "Windows"){
-      for(i in 1:nn){
-        for(j in 1:i){
-          muvek[i] = muvek[i] + zz[j]*(i-j+0.5)^(Hs[i]-3/2) #struct[i-j+1]
-        }
+    for(i in 1:nn){
+      for(j in 1:i){
+        muvek[i] = muvek[i] + zz[j]*(i-j+0.5)^(Hs[i]-3/2) #struct[i-j+1]
       }
     }
+    # 
+    # if(Sys.info()[['sysname']] == "Darwin"){
+    # compute_mu_fgn(muvek, nn, zz,  Hs)
+    # }else if(Sys.info()[['sysname']] == "Linux"){
+    #    for(i in 1:nn){
+    #      for(j in 1:i){
+    #        muvek[i] = muvek[i] + zz[j]*(i-j+0.5)^(Hs[i]-3/2) #struct[i-j+1]
+    #      }
+    #    }
+    # }else if(Sys.info()[['sysname']] == "Windows"){
+    #   for(i in 1:nn){
+    #     for(j in 1:i){
+    #       muvek[i] = muvek[i] + zz[j]*(i-j+0.5)^(Hs[i]-3/2) #struct[i-j+1]
+    #     }
+    #   }
+    # }
      # muvek=numeric(nn)
      # #struct=numeric(nn)
      # struct = (1:nn-0.5)^(Hs-3/2)

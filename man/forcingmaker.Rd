@@ -39,25 +39,28 @@ the fitted model.
 }
 \examples{
 \donttest{
-n = 200
+set.seed(123)
+n = 300
 time=1:n
-a = 0.6
+a = 0.5
 b = 0.35/n
-Hs = a+b*time
+phis = a+b*time
 F0 = -3
-sigmaf=0.1
+sigmaf=0.7
 sigma = 1.2
 
-s = fgn_timedep_sim(n,Hs=Hs)
-forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*7
-muvek = mu.computer(forcing,sigmaf,F0,memory=Hs,model="fgn")
+s = ar1_timedep_sim(n,phis=phis)
+forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*5
+muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
 data = s + muvek
-object = inla.ews(data,forcing,model="fgn",memory.true=Hs)
+object = inla.ews(data,forcing,model="ar1",memory.true=phis)
 
 object = forcingmaker(object,quick=FALSE,print.progress=TRUE,
                     intercept=object$.args$intercept)
 summary(object)
 plot(object)
+
+
 }
 }
 \seealso{

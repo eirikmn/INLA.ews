@@ -34,12 +34,24 @@ plot(y,type="l",col="grey",lwd=1.1)
  
  y = greenland$Runoff_data
  forcing = greenland$Forcing
+ timesteps=c(1:50,50.1,51.9,53:141)
+ timesteps = sort(1:141+rnorm(141,sd=0.3))
+ 
+ # tmodes = c(log(1/20.94^2),log((0.5+0.2633)/(0.5-0.2633)),
+ #            log((0.625-0.5)/(1-0.2633-0.625)),log(1/3.026^2),0.8497) #
  object = INLA.ews::inla.ews(y,forcing,model="fgn",compute.mu=2,
-                             print.progress=TRUE)
+                             print.progress=TRUE,timesteps=timesteps,
+                             inla.options = list(verbose=TRUE,
+                                                 control.inla=list(restart=3)))
  summary(object)
  plot(object)
  
+ object2 = INLA.ews::inla.ews(y,forcing,model="fgn",compute.mu=2,
+                             print.progress=TRUE,timesteps=timesteps,
+                             inla.options = list(control.inla=list(restart=3),
+                                                 control.mode=list(theta=object$inlafit$summary.hyperpar$mode)))
  
+ plot(object2) 
 }
 
 #######

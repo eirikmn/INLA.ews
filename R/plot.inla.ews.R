@@ -95,7 +95,7 @@ plot.inla.ews <- function(x,
     gg = ggplot(ggd,aes(.data$time)) + theme_bw()+ 
       xlab("Time")+ylab("Observations")+
       labs(title="Forced response")+
-      geom_point(aes(y=.data$y),color="gray",size=2.5)
+      geom_line(aes(y=.data$y),color="gray",size=0.7,alpha=0.9)
     if(!is.null(x$forced$quant0.025)){
       #gg = gg + geom_line(aes(y=.data$lower),col="")
       gg = gg + geom_ribbon(aes(ymin=.data$lower,ymax=.data$upper),color="red",

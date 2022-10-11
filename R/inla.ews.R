@@ -1,7 +1,6 @@
 #' Bayesian analysis of early warning signals
 #'
 #' Fits a Bayesian hierarchical model with time-dependent correlation using INLA.
-#'
 #' @param data Numeric describing the observations from which early warning signals is to be detected.
 #' @param forcing Numeric describing potential forcing to the system. If no forcing
 #' is included, set to \code{numeric(0)} (default).
@@ -11,6 +10,13 @@
 #' @param compute.mu Should the forced response be computed? Set to \code{0} if not, 
 #' \code{1} if only mean and standard deviation should be computed or \code{2} if quantiles
 #' should be computed (this is slower).
+#' @param timesteps Numeric vector describing time steps of input variables (if steps are not equidistant).
+#' @param stepsize Numeric stating the step size used in the optimization procedure in 
+#' the INLA program. If convergence cannot be achieved, then changing this will sometimes help. 
+#' Default value is \code{stepsize=0.01}.
+#' @param num.threads Integer stating how many cores should be used by the INLA program. 
+#' For rgeneric models (as is used here) stability is sometimes improved if \code{num.threads=1}, 
+#' which is the default value here. Increasing this might improve runtime. 
 #' @param inla.options List giving options (such as step length and the number of threads to be used),
 #' to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.
 #' @param print.progress boolean indicating whether or not progress should be printed to screen.
@@ -22,6 +28,7 @@
 #' @examples
 #' \donttest{
 #' ### AR(1) simulation example ###
+#' set.seed(123)
 #' n = 300
 #' sigma = 1
 #' a=0.2
@@ -47,6 +54,7 @@
 #' 
 #' 
 #' ### fGn simulation example ###
+#' set.seed(123)
 #' n=200
 #' sigma = 1.2
 #' time=1:n
@@ -60,11 +68,13 @@
 #' summary(object)
 #' plot(object)
 #' 
+#' 
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
 #' @export
 inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute.mu=0,
+                     timesteps=NULL, stepsize=0.01,num.threads=1,
                      inla.options=NULL,print.progress=FALSE,
                      memory.true=NULL){
 
@@ -88,10 +98,23 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
     options(digits = 7)
   }
   
+  inla.options = set.options(inla.options, inla.options.default()) #fill missing default settings
+  inla.options$num.threads=num.threads
+  inla.options$control.inla$h = stepsize
+  
+  
   n=length(data)
-  time=1:n
+  
   intercept = mean(data[1:20])
-  df = data.frame(y = data-intercept,data = data,idy=1:n,time=time)
+  if(!is.null(timesteps)){
+    time=timesteps
+  }else{
+    time=1:n
+  }
+  time_normalized = time-time[1]; time_normalized=time_normalized/time_normalized[n]
+  
+  df = data.frame(y = data-intercept,data = data,idy=1:n,time_normalized=time_normalized,
+                  time=time)
 
   if(print.progress){
     cat("Setting up rgeneric model..\n",sep="")
@@ -100,18 +123,34 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
     if(length(forcing)>0){
       
       rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1.forcing,n=n,
-                                              time=df$time,forcing=forcing)
+                                              time=df$time_normalized,forcing=forcing)
     }else{
       rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1,n=n,time=df$time)
     }
   }else if(tolower(model) %in% c("fgn","lrd")){
     warning("This model is considerably slower than the AR(1) process. Expect longer computational time.")
     if(length(forcing)>0){
+      if(is.null(timesteps)){
+        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
+                                                time=df$time_normalized,forcing=forcing)
+      }else{
+        # rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing.uneven,n=n,
+        #                                         time=time_normalized,forcing=forcing)
+        warning("Uneven step size is currently not supported. Assuming equidistance and proceeding.")
+        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
+                                                time=df$time_normalized,forcing=forcing)
+      }
       
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
-                                              time=df$time,forcing=forcing)
     }else{
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn,n=n,time=df$time)
+      if(is.null(timesteps)){
+        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn,n=n,time=df$time_normalized)
+      }else{
+        # rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.uneven,n=n,time=time_normalized)
+        warning("Uneven step size is currently not supported. Assuming equidistance and proceeding.")
+        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
+                                                time=df$time_normalized,forcing=forcing)
+      }
+      
     }
     
   }
@@ -132,11 +171,19 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   if(print.progress){
     cat("Initiating inla program..\n",sep="")
   }
-   r = INLA::inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
-            verbose=FALSE,num.threads = 1)
-  # r <- do.call(INLA::inla,c(list(formula=formula,data=df,inla.options)))
+   # r = INLA::inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
+   #          verbose=FALSE,num.threads = 1)
+   r <- tryCatch(
+     do.call(INLA::inla, c(list(formula = formula,data = df,family = "gaussian"),inla.options) ),
+     error=warning
+   )
+   
+   if(is.character(r)){
+     feil = "\n Convergence can sometimes be improved by changing the step size."
+     stop(paste0(r,feil))
+   }
    if(print.progress){
-     cat("Completed INLA optimization..\n",sep="")
+     cat("Completed INLA optimization in ",format(r$cpu.used[4],digits=3)," seconds..\n",sep="")
    }
   object = list(formula=formula,inlafit=r,.args=list(data=data,
                                                      forcing=forcing,
@@ -154,6 +201,10 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   time.start.gather = Sys.time()
   object = resultgather(object,print.progress=print.progress)
   time.gather = difftime(Sys.time(), time.start.gather,units="secs")[[1]]
+  
+  if(print.progress){
+    cat("Results collected in ", format(time.gather,digits=3),"..\n",sep="")
+  }
   
   if(compute.mu >0){
     #intercept = object$results$fixed
