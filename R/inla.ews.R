@@ -57,12 +57,12 @@
 #' set.seed(123)
 #' n=200
 #' sigma = 1.2
-#' time=1:n
+#' time=seq(0,1,length.out=n)
 #' a = 0.6
-#' b = 0.35/n
+#' b = 0.35
 #' Hs = a+b*time
 #' 
-#' data = fgn_timedep_sim(n,Hs=Hs)
+#' data = fgn_timedep_sim(n,a=a,b=b)
 #' 
 #' object = inla.ews(data,model="fgn",memory.true=Hs)
 #' summary(object)
@@ -128,7 +128,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1,n=n,time=df$time)
     }
   }else if(tolower(model) %in% c("fgn","lrd")){
-    warning("This model is considerably slower than the AR(1) process. Expect longer computational time.")
+    warning("This model is considerably slower than the AR(1) process. Expect longer computational time.\n")
     if(length(forcing)>0){
       if(is.null(timesteps)){
         rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,

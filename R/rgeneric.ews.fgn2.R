@@ -8,6 +8,7 @@
 #' @param theta Vector describing the hyperparameters in internal scaling.
 #'
 #'
+#'
 #' @importFrom stats dnorm
 rgeneric.ews.fgn2 = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
@@ -29,13 +30,15 @@ rgeneric.ews.fgn2 = function(
     sb=1
     sbar = sb-sa
     b = -sbar + (2*sbar)/(1+exp(-theta[3]))
-    alower = sa-min(b*t)
-    aupper = sb-max(b*t)
+    time = seq(from=0,to=1,length.out=nn)
+    alower = sa-min(b*time)
+    aupper = sb-max(b*time)
     a = alower+ (aupper-alower)/(1+exp(-theta[2]))
     
-    time = seq(from=0,to=1,length.out=nn)
+    
     
     memory = a+b*time^c
+    cat("a: ",a,", b: ",b,", c: ",c,", rangemem: ",range(memory),"\n",sep="")
     return(list(memory = memory,time=time, kappa = kappa, 
                 a=a,b=b,c=c))
   }
@@ -80,8 +83,12 @@ rgeneric.ews.fgn2 = function(
       }
     }
     #sigmat = sigmamaker(nn,sx,Hs)
-    
-    return (solve(sigmat))
+    print(range(sigmat))
+    print(det(sigmat))
+    q=solve(sigmat)
+    print(range(q))
+    print(det(q))
+    return (q)
   }
   
   log.norm.const = function(){
@@ -96,9 +103,9 @@ rgeneric.ews.fgn2 = function(
     # }
     params = interpret.theta()
     lprior = INLA::inla.pc.dprec(params$kappa, u=1, alpha=0.01, log=TRUE) + log(params$kappa) #kappa
-    lprior = lprior + dnorm(theta[2],log=TRUE) #theta_a
-    lprior = lprior + dnorm(theta[3],log=TRUE) #theta_b
-    lprior = lprior + dnorm(theta[4],log=TRUE) #theta_c
+    lprior = lprior + dnorm(theta[2],sd=1,log=TRUE) #theta_a
+    lprior = lprior + dnorm(theta[3],sd=1,log=TRUE) #theta_b
+    lprior = lprior + dnorm(theta[4],sd=1,log=TRUE) #theta_c
     
     # if(length(z)>0){
     #   lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa_f

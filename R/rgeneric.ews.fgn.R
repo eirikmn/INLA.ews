@@ -68,9 +68,11 @@ rgeneric.ews.fgn = function(
     sigmat = matrix(NA,nn,nn)
     for(i in 1:nn){
       for(j in 1:nn){
-        t = min(i,j)
+        #t = max(i,j)
+        t = (i+j)/2/nn
+        H2 = 2*(hyperparam$a+hyperparam$b*t)
         k=abs(i-j)
-        sigmat[i,j] = sx^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
+        sigmat[i,j] = sx^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
       }
     }
     #sigmat = sigmamaker(nn,sx,Hs)
@@ -243,12 +245,14 @@ rgeneric.ews.fgn.forcing = function(
     Hs = hyperparam$Hs
     kappa = hyperparam$kappa
     sx = 1/sqrt(hyperparam$kappa)
-    H2 = 2*Hs
+    # H2 = 2*Hs
     k=0:(nn-1)
     sigmat = matrix(NA,nn,nn)
     for(i in 1:nn){
       for(j in 1:nn){
-        t = min(i,j)
+        # t = max(i,j)
+        t = (i+j)/2/nn
+        H2 = 2*(hyperparam$a+hyperparam$b*t)
         k=abs(i-j)
         sigmat[i,j] = sx^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
       }

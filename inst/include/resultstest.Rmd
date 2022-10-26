@@ -1,0 +1,257 @@
+---
+title: "corroboration"
+author: "Eirik Myrvoll-Nilsen"
+date: "2022-10-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r start}
+NGRIP_HR=read.csv("~/Downloads/test_Niklas_Inter.csv",header = FALSE) #Interpolated without Filter 1y gap
+NGRIP_HR2=read.csv("~/Downloads/test_Niklas_Inter_NO_filter.csv",header=FALSE) #Interpolated without Filter 5y gap
+NGRIP_HR_f=read.csv("~/Downloads/test_Niklas_Inter_filter.csv",header=FALSE) #Interpolated with Filter 1y gap
+NGRIP_HR_f2=read.csv("~/Downloads/test_Niklas_Inter_filter2.csv",header=FALSE)#Interpolated with Filter 5y gap
+
+```
+
+```{r pressure, echo=FALSE}
+{
+plot(NGRIP_HR$V1,type="l",main="No filter 1y gap")
+plot(NGRIP_HR2$V1,type="l",main="No filter 5y gap")
+plot(NGRIP_HR_f$V1,type="l",main="Filter 1y gap")
+plot(NGRIP_HR_f2$V1,type="l",main="Filter 5y gap")
+}
+time_test = 11704:59938
+time_test2=seq(11728,59920,5)
+load("~/Downloads/events_rasmussen.RData")
+events = events_rasmussen$event
+
+GS_onsets = which(grepl("Start of GS", events_rasmussen$event, fixed = TRUE))
+GI_onsets = which(grepl("Start of GI", events_rasmussen$event, fixed = TRUE))
+
+Clear_GS_onsets = c(9,21,23,25,29,31,33,37,41,43,45,47,51,57,61,63,65,69,71,75,77)
+Clear_GI_onsets = c(8,16,22,24,26,30,32,36,40,42,44,46,50,54,60,62,64,68,70,74,76)
+```
+
+```{r for-loop-noF1y}
+
+data = NGRIP_HR$V1
+proxy=rev(data[-1])
+time = time_test
+do.detrend = FALSE
+model="ar1"
+ewsres = c()
+probpos = numeric(length(Clear_GI_onsets))
+{
+plot(time,proxy,xlab="Time",ylab="d18O",type="l",col="red",xlim=rev(range(time)))
+for(i in 1:length(Clear_GI_onsets)){
+  startage = events_rasmussen$age[Clear_GS_onsets[i]]
+  endage = events_rasmussen$age[Clear_GI_onsets[i]]
+  indices = which(time<startage & time>endage)
+  windowy = proxy[indices]
+  windowx = time[indices]
+  lines(windowx,windowy,col="blue")
+  if(do.detrend){
+    lmfit = lm(y~1+x,data=data.frame(y=windowy,x=windowx))
+    ewsfit <- inla.ews(lmfit$residuals,model=model)
+  }else{
+    ewsfit <- inla.ews(windowy,model=model)
+  }
+  probpos[i] = ewsfit$results$summary$b$prob_positive
+  ewsres = c(ewsres, list(ewsfit))
+}
+}
+{plot(probpos,type="b");abline(h=0.5,lty=2);abline(h=0.95,lty=3)}
+summary(ewsres[[1]])
+```
+
+```{r for-loop-F1y}
+
+data = NGRIP_HR_f$V1
+proxy=rev(data[-1])
+time = time_test
+do.detrend = FALSE
+model="ar1"
+ewsres = c()
+probpos = numeric(length(Clear_GI_onsets))
+{
+plot(time,proxy,xlab="Time",ylab="d18O",type="l",col="red",xlim=rev(range(time)))
+for(i in 1:length(Clear_GI_onsets)){
+  startage = events_rasmussen$age[Clear_GS_onsets[i]]
+  endage = events_rasmussen$age[Clear_GI_onsets[i]]
+  indices = which(time<startage & time>endage)
+  windowy = proxy[indices]
+  windowx = time[indices]
+  lines(windowx,windowy,col="blue")
+  if(do.detrend){
+    lmfit = lm(y~1+x,data=data.frame(y=windowy,x=windowx))
+    ewsfit <- inla.ews(lmfit$residuals,model=model)
+  }else{
+    ewsfit <- inla.ews(windowy,model=model)
+  }
+  probpos[i] = ewsfit$results$summary$b$prob_positive
+  ewsres = c(ewsres, list(ewsfit))
+}}
+
+{plot(probpos,type="b");abline(h=0.5,lty=2);abline(h=0.95,lty=3)}
+summary(ewsres[[1]])
+```
+
+```{r for-loop-F5y}
+
+data = NGRIP_HR2$V1
+proxy=rev(data[-1])
+time = time_test2
+do.detrend = FALSE
+model="fgn"
+ewsres = c()
+probpos = numeric(length(Clear_GI_onsets))
+{
+plot(time,proxy,xlab="Time",ylab="d18O",type="l",col="red",xlim=rev(range(time)))
+for(i in 1:length(Clear_GI_onsets)){
+  cat("running model ",model," with detrending=",do.detrend,": iteration #",i,"\n",sep="")
+  startage = events_rasmussen$age[Clear_GS_onsets[i]]
+  endage = events_rasmussen$age[Clear_GI_onsets[i]]
+  indices = rev(which(time<startage & time>endage))
+  windowy = proxy[indices]
+  windowx = time[indices]
+  lines(windowx,windowy,col="blue")
+  if(do.detrend){
+    lmfit = lm(y~1+x,data=data.frame(y=windowy,x=windowx))
+    ewsfit <- inla.ews(lmfit$residuals,model=model)
+  }else{
+    ewsfit <- inla.ews(windowy,model=model)
+  }
+  probpos[i] = ewsfit$results$summary$b$prob_positive
+  ewsres = c(ewsres, list(ewsfit))
+}}
+{plot(probpos,type="b");abline(h=0.5,lty=2);abline(h=0.95,lty=3)}
+summary(ewsres[[1]])
+```
+
+
+
+```{r for-loop-F5y}
+
+data = NGRIP_HR_f2$V1
+proxy=rev(data[-1])
+time = time_test2
+do.detrend = TRUE
+model="fgn"
+ewsres = c()
+probpos = numeric(length(Clear_GI_onsets))
+
+plot(time,proxy,xlab="Time",ylab="d18O",type="l",col="red",xlim=rev(range(time)))
+for(i in 1:length(Clear_GI_onsets)){
+  cat("running model ",model," with detrending=",do.detrend,": iteration #",i,"\n",sep="")
+  startage = events_rasmussen$age[Clear_GS_onsets[i]]
+  endage = events_rasmussen$age[Clear_GI_onsets[i]]
+  
+  indices = rev(which(time<startage & time>endage))
+  windowy = proxy[indices]
+  windowx = time[indices]
+  #lines(windowx,windowy,col="blue")
+  if(do.detrend){
+    lmfit = lm(y~1+x,data=data.frame(y=windowy,x=windowx))
+    ewsfit <- inla.ews(lmfit$residuals,model=model)
+  }else{
+    ewsfit <- inla.ews(windowy,model=model)
+  }
+  probpos[i] = ewsfit$results$summary$b$prob_positive
+  cat(probpos,"\n",sep=", ")
+  ewsres = c(ewsres, list(ewsfit))
+}
+
+print(sum(probpos>0.95))
+{plot(probpos,type="b",ylim=c(0,1));abline(h=0.5,lty=2);abline(h=0.95,lty=3);abline(h=0.05,lty=3)}
+
+summary(ewsres[[1]])
+
+ggps = c()
+{
+  par(mfrow=c(5,5))
+  for(i in 1:length(probpos)){
+    startage = events_rasmussen$age[Clear_GS_onsets[i]]
+    endage = events_rasmussen$age[Clear_GI_onsets[i]]
+    indices = which(time<startage & time>endage)
+    windowy = proxy[indices]
+    windowx = time[indices]
+    ggd = data.frame(time=windowx,y=ewsres[[i]]$results$summary$H$mean,
+                     upper=ewsres[[i]]$results$summary$H$q0.025,
+                     lower=ewsres[[i]]$results$summary$H$q0.975
+                     )
+    ggp = ggplot(ggd,aes(x=time))+theme_bw()+
+      geom_ribbon(aes(ymin=lower,ymax=upper),col="red",fill="red",alpha=0.3)+
+      geom_line(aes(y=y),col="blue") + ylim(0.5,1)
+    print(ggp)
+    ggps = c(ggps,list(ggp))
+    
+  }
+}
+
+
+```
+
+
+
+
+
+
+
+```{r naive-interpolation}
+
+#ngripdata = read_xls("~/Downloads/NGRIP_d18O_and_dust_5cm.xls",sheet=2,col_names=TRUE)
+load("~/Downloads/NGRIP_5cm.RData")
+xx = NGRIP_5cm$age
+yy = NGRIP_5cm$d18O
+
+spl = splinefun(xx,yy)
+
+dage = 5
+time = seq(from=11704,to=59944,by=dage)
+proxy = spl(time)
+plot(time,proxy,type="l")
+
+startages = events_rasmussen$age[Clear_GS_onsets[-length(Clear_GS_onsets)]]
+endages = events_rasmussen$age[Clear_GI_onsets[-length(Clear_GI_onsets)]]
+nevents = length(startages)
+
+do.detrend = FALSE
+model="ar1"
+ewsres = c()
+probpos = numeric(nevents)
+
+for(i in 1:nevents){
+  ages = seq(from=startages[i],to=endages[i],by=-dage)
+  proxys = spl(ages)
+  if(do.detrend){
+    lmfit = lm(y~1+x,data=data.frame(y=windowy,x=windowx))
+    ewsfit <- inla.ews(lmfit$residuals,model=model)
+  }else{
+    ewsfit <- inla.ews(proxys,model=model)
+  }
+  probpos[i] = ewsfit$results$summary$b$prob_positive
+  ewsres = c(ewsres, list(ewsfit))
+}
+
+plot(probpos)
+sum(probpos>0.95)
+```
+
+
+
+
+
+
+
+
+
+
+
+

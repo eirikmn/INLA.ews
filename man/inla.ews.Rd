@@ -90,12 +90,12 @@ plot(object)
 set.seed(123)
 n=200
 sigma = 1.2
-time=1:n
+time=seq(0,1,length.out=n)
 a = 0.6
-b = 0.35/n
+b = 0.35
 Hs = a+b*time
 
-data = fgn_timedep_sim(n,Hs=Hs)
+data = fgn_timedep_sim(n,a=a,b=b)
 
 object = inla.ews(data,model="fgn",memory.true=Hs)
 summary(object)

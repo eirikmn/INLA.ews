@@ -5,30 +5,35 @@
 #' \code{inla.ews} package this function is only used for simulating examples.
 #' 
 #' @param sigma Numeric of length 1. The innovation standard deviation
-#' @param Hs Numeric of length corresponding to the length of the process. This gives 
-#' the value of the Hurst exponent at each time point.
+#' @param a Numeric of length 1. Intercept of the memory parameter
+#' @param b Numeric of length 1. Slope of the memory parameter
+#' @param n Integer. Length of the simulation.
 #' @return Returns the covariance matrix of the time dependent fGn process. This is 
 #' a dense \code{matrix} object.
 #' \code{object\$results}.
 #' @examples 
 #' n=50
-#' Hs = seq(from=0.6,to=0.8,length.out=n)
+#' a=0.6
+#' b=0.2
 #' sigma = 1
-#' cov.matrix <- sigmaHmaker(sigma,Hs)
+#' cov.matrix <- sigmaHmaker(sigma,a,b,n)
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords covariance matrix fgn
 #' @export
-sigmaHmaker = function(sigma,Hs){
-  n=length(Hs)
-  H2 = 2*Hs
+sigmaHmaker = function(sigma,a,b,n){
+  # n=length(Hs)
+  #H2 = 2*Hs
   k=0:(n-1)
   sigmat = matrix(NA,n,n)
   for(i in 1:n){
     for(j in 1:n){
-      t = min(i,j)
+      # t = min(i,j)
+      t = (i+j)/2
       k=abs(i-j)
-      sigmat[i,j] = sigma^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
+      H2 = 2*(a+b*t/n)
+      #sigmat[i,j] = sigma^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
+      sigmat[i,j] = sigma^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
     }
   }
   return(sigmat)
@@ -337,10 +342,10 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' @export
 #' @importFrom stats rnorm
 fgn_timedep_sim <- function(n,sigma=1,a=0.6,b=0.3,Hs=NULL){
-  if(is.null(Hs)){
-    Hs = a+b*seq(0,1,length.out=n)
-  }
-  sigmat = sigmaHmaker(sigma,Hs)
+  # if(is.null(Hs)){
+  #   Hs = a+b*seq(0,1,length.out=n)
+  # }
+  sigmat = sigmaHmaker(sigma,a,b,n)
   sigmachol = chol(sigmat)
   noise = sigmachol%*%rnorm(n)
   return(noise)

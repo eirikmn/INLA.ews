@@ -4,13 +4,16 @@
 \alias{sigmaHmaker}
 \title{Construct covariance matrix of time-dependent fGn model}
 \usage{
-sigmaHmaker(sigma, Hs)
+sigmaHmaker(sigma, a, b, n)
 }
 \arguments{
 \item{sigma}{Numeric of length 1. The innovation standard deviation}
 
-\item{Hs}{Numeric of length corresponding to the length of the process. This gives 
-the value of the Hurst exponent at each time point.}
+\item{a}{Numeric of length 1. Intercept of the memory parameter}
+
+\item{b}{Numeric of length 1. Slope of the memory parameter}
+
+\item{n}{Integer. Length of the simulation.}
 }
 \value{
 Returns the covariance matrix of the time dependent fGn process. This is 
@@ -24,9 +27,10 @@ assumption that the Hurst exponent changes over time. In the context of the
 }
 \examples{
 n=50
-Hs = seq(from=0.6,to=0.8,length.out=n)
+a=0.6
+b=0.2
 sigma = 1
-cov.matrix <- sigmaHmaker(sigma,Hs)
+cov.matrix <- sigmaHmaker(sigma,a,b,n)
 }
 \seealso{
 \code{\link{inla.ews}}
