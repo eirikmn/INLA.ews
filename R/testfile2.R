@@ -5,7 +5,7 @@ if(FALSE){
 data = NGRIP_HR_f2$V1
 proxy=rev(data[-1])
 time = time_test2
-do.detrend = TRUE
+do.detrend = FALSE
 model="fgn"
 ewsres = c()
 probpos = numeric(length(Clear_GI_onsets))

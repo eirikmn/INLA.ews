@@ -25,19 +25,57 @@ sigmaHmaker = function(sigma,a,b,n){
   # n=length(Hs)
   #H2 = 2*Hs
   k=0:(n-1)
-  sigmat = matrix(NA,n,n)
+  # sigmat = matrix(NA,n,n)
+  # for(i in 1:n){
+  #   for(j in 1:n){
+  #     t = min(i,j)
+  #     #t = (i+j)/2
+  #     k=abs(i-j)
+  #     H2 = 2*(a+b*t/n)
+  #     #sigmat[i,j] = sigma^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
+  #     sigmat[i,j] = sigma^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+  #   }
+  # }
+  
+  
+  Gmat = matrix(NA,n,n)
   for(i in 1:n){
     for(j in 1:n){
-      # t = min(i,j)
-      t = (i+j)/2
-      k=abs(i-j)
-      H2 = 2*(a+b*t/n)
-      #sigmat[i,j] = sigma^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
-      sigmat[i,j] = sigma^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+      Gmat[i,j] = greensH(i,j,a,b,n)
     }
   }
-  return(sigmat)
+  covmat = sigma^2*Gmat%*%t(Gmat)
+  chol(covmat)
+  return(covmat)
 }
+
+
+
+#' Compute Green's function for time-dependent fGn model
+#' 
+#' This function computes Green's function.
+#' 
+#' @param t Row index in the Green's matrix.
+#' @param s Column index in the Green's matrix.
+#' @param a Intercept in lienar function for Hurst exponent.
+#' @param b Slope in lienar function for Hurst exponent.
+#' @param n Number of data points (used for rescaling \code{b}).
+#' @return Returns the evaluation of the Green's function at \code{(t-s)}.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{sigmaHmaker}}
+#' @keywords Greens function Hurst exponent 
+greensH = function(t,s,a,b,n){
+  if(t-s<0){
+    return(0)
+  }else{
+    H = a+b*max(t,s)/n
+    ret = (t-s+0.5)^(H-3/2)
+    return(ret)
+  }
+}
+
+
 
 #' Simulate inferred forced response
 #' 

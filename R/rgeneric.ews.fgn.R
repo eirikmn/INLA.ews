@@ -54,6 +54,17 @@ rgeneric.ews.fgn = function(
     return (matrix(1,nn,nn))
   }
 
+  greensH = function(t,s,a,b,n){
+    if(t-s<0){
+      return(0)
+    }else{
+      H = a+b*max(t,s)/n
+      ret = (t-s+0.5)^(H-3/2)
+      return(ret)
+    }
+  }
+  
+  
   Q = function()  {
     if(!is.null(envir)){
       nn=get("n",envir)
@@ -63,21 +74,31 @@ rgeneric.ews.fgn = function(
     Hs = hyperparam$Hs
     kappa = hyperparam$kappa
     sx = 1/sqrt(hyperparam$kappa)
+    a = hyperparam$amax
+    b=hyperparam$b
     H2 = 2*Hs
     k=0:(nn-1)
-    sigmat = matrix(NA,nn,nn)
+    # sigmat = matrix(NA,nn,nn)
+    # for(i in 1:nn){
+    #   for(j in 1:nn){
+    #     #t = max(i,j)
+    #     t = (i+j)/2/nn
+    #     H2 = 2*(hyperparam$a+hyperparam$b*t)
+    #     k=abs(i-j)
+    #     sigmat[i,j] = sx^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+    #   }
+    # }
+    # #sigmat = sigmamaker(nn,sx,Hs)
+
+    Gmat = matrix(NA,nn,nn)
     for(i in 1:nn){
       for(j in 1:nn){
-        #t = max(i,j)
-        t = (i+j)/2/nn
-        H2 = 2*(hyperparam$a+hyperparam$b*t)
-        k=abs(i-j)
-        sigmat[i,j] = sx^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+        Gmat[i,j] = greensH(i,j,a,b,nn)
       }
     }
-    #sigmat = sigmamaker(nn,sx,Hs)
-
-    return (solve(sigmat))
+    covmat = sx^2*Gmat%*%t(Gmat)
+    
+    return (solve(covmat))
   }
 
   log.norm.const = function(){
