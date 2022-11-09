@@ -111,7 +111,7 @@ plot.inla.ews <- function(x,
   }
   
   if(plot.options$plot.memory){
-    if(tolower(x$.args$model) %in% c("ar1","ar(1)","1")){
+    if(tolower(x$.args$model) %in% c("ar1","ar(1)","1","ar1g")){
       plot.df = data.frame(time=x$.args$inladata$time,
                            mean=x$results$summary$phi$mean,
                            median=x$results$summary$phi$median,

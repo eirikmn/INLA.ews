@@ -136,6 +136,42 @@ summary(ewsres[[1]])
 ```
 
 
+```{r for-loop-F5y-ar1greens}
+data = NGRIP_HR_f2$V1
+proxy=rev(data[-1])
+time = time_test2
+do.detrend = FALSE
+model="ar1g"
+ewsres = c()
+probposar1g = numeric(length(Clear_GI_onsets))
+
+plot(time,proxy,xlab="Time",ylab="d18O",type="l",col="red",xlim=rev(range(time)))
+for(i in 1:length(Clear_GI_onsets)){
+  cat("running model ",model," with detrending=",do.detrend,": iteration #",i,"\n",sep="")
+  startage = events_rasmussen$age[Clear_GS_onsets[i]]
+  endage = events_rasmussen$age[Clear_GI_onsets[i]]
+  
+  indices = rev(which(time<startage & time>endage))
+  windowy = proxy[indices]
+  windowx = time[indices]
+  #lines(windowx,windowy,col="blue")
+  if(do.detrend){
+    lmfit = lm(y~1+x,data=data.frame(y=windowy,x=windowx))
+    ewsfit <- inla.ews(lmfit$residuals,model=model)
+  }else{
+    ewsfit <- inla.ews(windowy,model=model)
+  }
+  probposar1g[i] = ewsfit$results$summary$b$prob_positive
+  cat(probposar1g,"\n",sep=", ")
+  ewsres = c(ewsres, list(ewsfit))
+}
+
+print(sum(probpos>0.95))
+{plot(probpos,type="b",ylim=c(0,1));abline(h=0.5,lty=2);abline(h=0.95,lty=3);abline(h=0.05,lty=3)}
+
+summary(ewsres[[1]])
+```
+
 
 ```{r for-loop-F5y}
 

@@ -73,7 +73,7 @@ summary.inla.ews = function(object,digits=4L,...){
   out = c(out, b_positive = object$results$summary$b$prob_positive)
   n=length(object$.args$data)
   out = c(out,list(n=n))
-  if(tolower(object$.args$model) %in% c("ar1","ar(1)","1")){
+  if(tolower(object$.args$model) %in% c("ar1","ar(1)","1","ar1g")){
     memorystart = c(object$results$summary$phi$mean[1],
                     object$results$summary$phi$sd[1],
                     object$results$summary$phi$q0.025[1],

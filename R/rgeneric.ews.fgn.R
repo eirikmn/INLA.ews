@@ -59,6 +59,8 @@ rgeneric.ews.fgn = function(
       return(0)
     }else{
       H = a+b*max(t,s)/n
+      # H = a+b*min(t,s)/n
+      # H = a+b*(t+s)/2/n
       ret = (t-s+0.5)^(H-3/2)
       return(ret)
     }
@@ -74,7 +76,7 @@ rgeneric.ews.fgn = function(
     Hs = hyperparam$Hs
     kappa = hyperparam$kappa
     sx = 1/sqrt(hyperparam$kappa)
-    a = hyperparam$amax
+    a = hyperparam$a
     b=hyperparam$b
     H2 = 2*Hs
     k=0:(nn-1)

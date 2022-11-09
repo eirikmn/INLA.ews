@@ -31,7 +31,7 @@ resultgather <- function(object,print.progress){
   nsims = 30000
   hypersamples = INLA::inla.hyperpar.sample(nsims,r)
   
-  if(object$.args$model %in% c("ar1","ar(1)","1")){
+  if(object$.args$model %in% c("ar1","ar(1)","1", "ar1g")){
     if(length(object$.args$forcing)>0){
       sigmaf_marg = INLA::inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta4 for idy`)
       F0_marg = object$inlafit$marginals.hyperpar$`Theta5 for idy`
@@ -151,7 +151,7 @@ resultgather <- function(object,print.progress){
                                 b = b_zmarg,#list(INLA::inla.zmarginal(b_marg,silent=TRUE))[[1]],
                                 sigma = list(INLA::inla.zmarginal(sigma_marg,silent=TRUE))[[1]])
   object$results$summary$b$prob_positive=b_positive_prob
-  if(tolower(object$.args$model) %in% c("ar1","ar(1)","1")){
+  if(tolower(object$.args$model) %in% c("ar1","ar(1)","1","ar1g")){
     object$results$summary$phi = list(mean=phi_means,median=phi_median,sd=phi_sd,
                                       q0.025=phi_qlower,q0.5=phi_qmid,q0.975=phi_qupper,
                                       hpd0.95lower=phi_lower,hpd0.95upper=phi_upper)

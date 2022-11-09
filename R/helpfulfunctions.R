@@ -50,6 +50,58 @@ sigmaHmaker = function(sigma,a,b,n){
 }
 
 
+#' Construct covariance matrix of time-dependent ar1g model
+#' 
+#' This function constructs the covariance matrix of the ar1g process under the 
+#' assumption that the Hurst exponent changes over time. In the context of the 
+#' \code{inla.ews} package this function is only used for simulating examples.
+#' 
+#' @param sigma Numeric of length 1. The innovation standard deviation
+#' @param a Numeric of length 1. Intercept of the memory parameter
+#' @param b Numeric of length 1. Slope of the memory parameter
+#' @param n Integer. Length of the simulation.
+#' @return Returns the covariance matrix of the time dependent fGn process. This is 
+#' a dense \code{matrix} object.
+#' \code{object\$results}.
+#' @examples 
+#' n=50
+#' a=0.6
+#' b=0.2
+#' sigma = 1
+#' cov.matrix <- sigmaHmaker(sigma,a,b,n)
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords covariance matrix fgn
+#' @export
+sigmaar1maker = function(sigma,a,b,n){
+  # n=length(Hs)
+  #H2 = 2*Hs
+  k=0:(n-1)
+  # sigmat = matrix(NA,n,n)
+  # for(i in 1:n){
+  #   for(j in 1:n){
+  #     t = min(i,j)
+  #     #t = (i+j)/2
+  #     k=abs(i-j)
+  #     H2 = 2*(a+b*t/n)
+  #     #sigmat[i,j] = sigma^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
+  #     sigmat[i,j] = sigma^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+  #   }
+  # }
+  
+  
+  Gmat = matrix(NA,n,n)
+  for(i in 1:n){
+    for(j in 1:n){
+      Gmat[i,j] = greensar1(i,j,a,b,n)
+    }
+  }
+  covmat = sigma^2*Gmat%*%t(Gmat)
+  chol(covmat)
+  return(covmat)
+}
+
+
 
 #' Compute Green's function for time-dependent fGn model
 #' 
@@ -71,6 +123,35 @@ greensH = function(t,s,a,b,n){
   }else{
     H = a+b*max(t,s)/n
     ret = (t-s+0.5)^(H-3/2)
+    return(ret)
+  }
+}
+
+
+#' Compute Green's function for time-dependent AR(1) model
+#' 
+#' This function computes Green's function.
+#' 
+#' @param t Row index in the Green's matrix.
+#' @param s Column index in the Green's matrix.
+#' @param a Intercept in lienar function for Hurst exponent.
+#' @param b Slope in lienar function for Hurst exponent.
+#' @param n Number of data points (used for rescaling \code{b}).
+#' @return Returns the evaluation of the Green's function at \code{(t-s)}.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{sigmaar1maker}}
+#' @keywords Greens function Hurst exponent 
+greensar1 = function(t,s,a,b,n){
+  if(t-s<0){
+    return(0)
+  }else{
+    # phi = a+b*max(t,s)/n
+    # phi = a+b*(t+s)/2/n
+    phi = a+b*min(t,s)/n
+    # ret = (t-s+0.5)^(H-3/2)
+    
+    ret = phi^(t-s)
     return(ret)
   }
 }
@@ -359,6 +440,42 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
   }
   return(as.numeric(noise))
 }
+
+#' Simulate time dependent AR(1) series (using Green's function)
+#' 
+#' This function produces samples from a given time dependent AR(1) process using Green's function instead of AR(1) directly.
+#' 
+#' @param n The length of the simulated time series.
+#' @param sigma The standard deviation of the innovations.
+#' @param a Intercept in the evolution of the lag-one correlation.
+#' @param b Slope in the evolution of the lag-one correlation.
+#' @param phis Numeric of length \code{n}. If evolution of lag-one correlation is 
+#' to be given explicitly this is done here. Overrides \code{a} and \code{b}.
+#' @return Returns the simulated time series as a \code{numeric} object.
+#' 
+#' @examples 
+#' n = 200
+#' sims = ar1_timedep_sim(n,sigma=1,a=0.2,b=0.7)
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation ar1 timedep 
+#' @export
+#' @importFrom stats rnorm
+ar1g_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
+  if(is.null(phis)){
+    phis = a+b*seq(0,1,length.out=n)
+  }
+  sigmat = sigmaar1maker(sigma,a,b,n)
+  sigmachol = chol(sigmat)
+  noise = sigmachol%*%rnorm(n)
+  noise=numeric(n)
+  noise[1] = rnorm(1,mean=0,sd=sigma)
+  for(i in 2:n){
+    noise[i] = rnorm(1, mean=phis[i]*noise[i-1],sd=sigma)
+  }
+  return(as.numeric(noise))
+}
+
 #' Simulate time dependent fGn series
 #' 
 #' This function produces samples from a given time dependent fractional Gaussian noise process.
