@@ -37,7 +37,7 @@
 #' sigmaf = 0.3
 #' time = 1:n
 #' phis = a+b*1:n/n
-#' noise=ar1g_timedep_sim(n,sigma=sigma,a=a,b=b)
+#' noise=ar1_timedep_sim(n,sigma=sigma,a=a,b=b)
 #' 
 #' forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n
 #' zz = sigmaf*(F0+forcing)
@@ -48,8 +48,6 @@
 #' data = noise #+ muvek
 #' 
 #' object = inla.ews(data,forcing,model="ar1",compute.mu=FALSE, print.progress=TRUE,
-#'                     memory.true=phis)
-#' object = inla.ews(data,model="ar1g",compute.mu=FALSE, print.progress=TRUE,
 #'                     memory.true=phis)
 #' summary(object)
 #' plot(object)

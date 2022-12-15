@@ -65,7 +65,7 @@ sigmaHmaker = function(sigma,a,b,n){
 #' a=0.6
 #' b=0.2
 #' sigma = 1
-#' cov.matrix <- sigmaHmaker(sigma,a,b,n)
+#' cov.matrix <- sigmaar1maker(sigma,a,b,n)
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords covariance matrix fgn
@@ -451,14 +451,16 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' @return Returns the simulated time series as a \code{numeric} object.
 #' 
 #' @examples 
+#' \donttest{
 #' n = 600
 #' a=0.5
-#' b=-0.
+#' b=-0.1
 #' phis = seq(from=a,to=a+b,length.out=n)
-#' sims = ar1g_timedep_sim(n,sigma=1,phis=phis)
+#' sims = ar1g_timedep_sim(n,sigma=1,a=a,b=b)
 #' res = inla.ews(sims,model="ar1g",memory.true=phis)
 #' plot(res)
 #' summary(res)
+#' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation ar1 timedep 
@@ -489,7 +491,7 @@ ar1g_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
   # Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
   # covmat = solve(Q)
   # noise = chol(covmat)%*%rnorm(n)
-  # return(as.numeric(noise))
+   return(as.numeric(noise))
 }
 
 
@@ -621,8 +623,10 @@ Rfgn = function(a,b,n,t,s){
 #' @return Returns the simulated time series as a \code{numeric} object.
 #' 
 #' @examples 
+#' \donttest{
 #' n = 200
 #' sims = fgn_timedep_sim(n,sigma=1,a=0.6,b=0.3)
+#' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation ar1 timedep 

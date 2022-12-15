@@ -30,7 +30,7 @@ n=50
 a=0.6
 b=0.2
 sigma = 1
-cov.matrix <- sigmaHmaker(sigma,a,b,n)
+cov.matrix <- sigmaar1maker(sigma,a,b,n)
 }
 \seealso{
 \code{\link{inla.ews}}

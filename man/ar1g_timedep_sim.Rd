@@ -27,9 +27,9 @@ This function produces samples from a given time dependent AR(1) process using G
 \examples{
 n = 600
 a=0.5
-b=-0.
+b=-0.1
 phis = seq(from=a,to=a+b,length.out=n)
-sims = ar1g_timedep_sim(n,sigma=1,phis=phis)
+sims = ar1g_timedep_sim(n,sigma=1,a=a,b=b)
 res = inla.ews(sims,model="ar1g",memory.true=phis)
 plot(res)
 summary(res)

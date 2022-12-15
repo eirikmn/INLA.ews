@@ -70,7 +70,7 @@ F0 = 3
 sigmaf = 0.3
 time = 1:n
 phis = a+b*1:n/n
-noise=ar1g_timedep_sim(n,sigma=sigma,a=a,b=b)
+noise=ar1_timedep_sim(n,sigma=sigma,a=a,b=b)
 
 forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n
 zz = sigmaf*(F0+forcing)
@@ -80,9 +80,7 @@ muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
 
 data = noise #+ muvek
 
-object = inla.ews(data,forcing,model="ar1g",compute.mu=FALSE, print.progress=TRUE,
-                    memory.true=phis)
-object = inla.ews(data,model="ar1g",compute.mu=FALSE, print.progress=TRUE,
+object = inla.ews(data,forcing,model="ar1",compute.mu=FALSE, print.progress=TRUE,
                     memory.true=phis)
 summary(object)
 plot(object)
@@ -90,11 +88,11 @@ plot(object)
 
 ### fGn simulation example ###
 set.seed(123)
-n=200
+n=100
 sigma = 1.2
 time=seq(0,1,length.out=n)
 a = 0.6
-b = -0.35
+b = 0.25
 Hs = a+b*time
 
 data = fgn_timedep_sim(n,a=a,b=b)
@@ -102,8 +100,8 @@ data = fgn_timedep_sim(n,a=a,b=b)
 object = inla.ews(data,model="fgn",memory.true=Hs)
 summary(object)
 plot(object)
-
-
+inla.options = list(control.mode=list(theta=object$inlafit$summary.hyperpar$mode,restart=TRUE))
+object2 = inla.ews(data,model="fgn",memory.true=Hs,inla.options=inla.options)
 }
 }
 \author{
