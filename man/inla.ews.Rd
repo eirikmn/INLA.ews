@@ -65,7 +65,7 @@ set.seed(123)
 n = 1000
 sigma = 1
 a=0.6
-b=-0.2
+b=-0.0
 F0 = 3
 sigmaf = 0.3
 time = 1:n
@@ -94,7 +94,7 @@ n=200
 sigma = 1.2
 time=seq(0,1,length.out=n)
 a = 0.6
-b = 0.35
+b = -0.35
 Hs = a+b*time
 
 data = fgn_timedep_sim(n,a=a,b=b)

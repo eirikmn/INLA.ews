@@ -25,7 +25,7 @@ sigmaHmaker = function(sigma,a,b,n){
   # n=length(Hs)
   #H2 = 2*Hs
   k=0:(n-1)
-  # sigmat = matrix(NA,n,n)
+   sigmat = matrix(NA,n,n)
   # for(i in 1:n){
   #   for(j in 1:n){
   #     t = min(i,j)
@@ -37,16 +37,13 @@ sigmaHmaker = function(sigma,a,b,n){
   #   }
   # }
   
-  
-  Gmat = matrix(NA,n,n)
   for(i in 1:n){
     for(j in 1:n){
-      Gmat[i,j] = greensH(i,j,a,b,n)
+      sigmat[i,j] = Rfgn(a,b,n,i,j)
     }
   }
-  covmat = sigma^2*Gmat%*%t(Gmat)
-  chol(covmat)
-  return(covmat)
+  sigmat = sigma*sigmat
+  return(sigmat)
 }
 
 
@@ -454,8 +451,14 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' @return Returns the simulated time series as a \code{numeric} object.
 #' 
 #' @examples 
-#' n = 200
-#' sims = ar1_timedep_sim(n,sigma=1,a=0.2,b=0.7)
+#' n = 600
+#' a=0.5
+#' b=-0.
+#' phis = seq(from=a,to=a+b,length.out=n)
+#' sims = ar1g_timedep_sim(n,sigma=1,phis=phis)
+#' res = inla.ews(sims,model="ar1g",memory.true=phis)
+#' plot(res)
+#' summary(res)
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation ar1 timedep 
@@ -465,16 +468,145 @@ ar1g_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
   if(is.null(phis)){
     phis = a+b*seq(0,1,length.out=n)
   }
-  sigmat = sigmaar1maker(sigma,a,b,n)
-  sigmachol = chol(sigmat)
-  noise = sigmachol%*%rnorm(n)
+  lambdas = -log(phis)
+  
   noise=numeric(n)
-  noise[1] = rnorm(1,mean=0,sd=sigma)
+  sigma1 = sigma^2/(2*lambdas[1])
+  noise[1] = rnorm(1,mean=0,sd=sigma1)
   for(i in 2:n){
-    noise[i] = rnorm(1, mean=phis[i]*noise[i-1],sd=sigma)
+    sigmaeps = sigma^2/2*( 1/lambdas[i] - phis[i]^2/lambdas[i-1] )
+    noise[i] = rnorm(1, mean=phis[i]*noise[i-1],sd=sigmaeps)
   }
-  return(as.numeric(noise))
+
+    # kappas = numeric(nn)
+  # 
+  # kappas[1] = 2*lambdas[1]/sx^2
+  # kappas[2:nn] = 1/sx^2*1/( 1/(2*lambdas[2:nn])-phis[2:nn]^2/(2*lambdas[1:(nn-1)]) )
+  # 
+  # ii = c(1:nn,2:nn) ; jj = c(1:nn,1:(nn-1))
+  # xx = c(kappas[1:(nn-1)]+phis[2:nn]^2*kappas[2:nn],kappas[nn],
+  #        -phis[2:nn]*kappas[2:nn])
+  # Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+  # covmat = solve(Q)
+  # noise = chol(covmat)%*%rnorm(n)
+  # return(as.numeric(noise))
 }
+
+
+#' Hypergeometric function
+#' 
+#' The hypergeometric function 2F1(a,b;c;z).
+#' 
+#' @param a First parameter.
+#' @param b Second parameter.
+#' @param c Third parameter.
+#' @param z Fourth parameter.
+#' @param trunc The number of terms used before truncating the infinite series.
+#' @return Returns the hypergeometric function evaluated using parameters \code{a,b,c} and \code{z}.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep 
+hyperg = function(a,b,c,z,trunc){
+  kk = 0:(trunc-1)
+  cp = cumprod((a+kk)*(b+kk)/(c+kk)*z/(1:trunc)  ) 
+  s = 1 + sum(cp)
+  return(s)
+}
+
+#' Incomplete beta function
+#' 
+#' The incomplete beta function (allows for some negative parameters).
+#' 
+#' @param a First parameter.
+#' @param b Second parameter.
+#' @param z The upper bound of the integral of the ordinary beta function.
+#' @param trunc The number of terms used before truncating the infinite series.
+#' @return Returns the value of the incomplete beta function.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep 
+incBeta = function(z,a,b,trunc){
+  hg = 1/a*z^a*hyperg(a,1-b,1+a,z,trunc=trunc)
+  return(hg)
+}
+
+#' Adapted gamma function
+#' 
+#' A version of the gamma function used in other functions.
+#' 
+#' @param a First parameter.
+#' @param b Second parameter.
+#' @param n Length of process.
+#' @param t First index.
+#' @param s Second index.
+#' @return Returns the value of the function.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep 
+gammas = function(a,b,n,t,s){
+  if((b *(s + t - 2 *max(s, t)))/n==0){
+    return(0)
+  }
+  else{
+    return( ( gamma(-1 + 2*a+(b*(s + t))/n)*
+              gamma(1 - 2*a-(2*b*max(s,t))/n))/
+              gamma((b*(s + t - 2*max(s, t)))/n) 
+            )
+  }
+}
+
+
+#' Covariance of time-dependent fractional Brownian motion
+#' 
+#' Covariance function of fractional Brownian motion with time-dependent increments.
+#' 
+#' @param a Starting point of Hurst exponent (intercept).
+#' @param b Slope of Hurst exponent.
+#' @param n Length of process.
+#' @param t First index.
+#' @param s Second index.
+#' @return Returns the covariance function of the time-dependent fBm.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fbm timedep 
+R2test = function(a,b,n,t,s){
+  return(
+  (1/(2*a*n+b*(s+t)))*n*( sqrt( (a + (b* max(s,t)/n))*(-1 + 2 *a + (2* b* max(s,t)/n))/beta(
+    2 - 2 *(a + (b *max(s,t)/n)), -(1/2) + a + (b *max(s,t)/n)))*sqrt( (a + (b* min(s,t)/n))*(-1 + 2 *a + (2* b* min(s,t)/n))/beta(
+      2 - 2 *(a + (b *min(s,t)/n)), -(1/2) + a + (b *min(s,t)/n))))*(beta(-(1/2) + a + (b *max(s, t))/n, -((
+        2* (-1 + a)* n + b* max(s, t) + b *min(s, t))/n))* beta((n + b* max(s, t) - b* min(s, t))/ n, ((-1 + 2* a)* n + b* max(s, t) + b* min(s, t))/n)* min(s, t)^( 2* a + (b* (s + t))/n) + 
+          beta(-(1/2) + a + (b *min(s, t))/n, -((2*(-1 + a)*n +b*max(s, t) + b*min(s, t))/n))*
+          ((-incBeta(min(s, t)/max(s, t),  1-2*a-(2*b*max(s, t))/n, -1 + 2 *a + (b *(s + t))/n,100) 
+            + gammas(a,b,n,t,s)
+            
+          )*min(s, t)^(2 *a + (b* (s + t))/n) + (n *
+                                                   hyperg(2 - 2* a - (b *(s + t))/n, (n - b* max(s, t) + b *min(s, t))/n, (2 *n - b* max(s, t) + b* min(s, t))/n, min(s, t)/max(s, t),100) 
+                                                 *max(s, t)^(2*a+(b*(s + t))/n)*(min(s, t)/max(s, t))^(1+(b*(-max(s, t)+min(s, t)))/n))/(n-b*max(s, t)+b*min(s, t))))
+  )
+}
+
+#' Covariance of time-dependent fractional Gaussian noise
+#' 
+#' Covariance function of fractional Gaussian noise with time-dependent increments.
+#' 
+#' @param a Starting point of Hurst exponent (intercept).
+#' @param b Slope of Hurst exponent.
+#' @param n Length of process.
+#' @param t First index.
+#' @param s Second index.
+#' @return Returns the covariance function of the time-dependent fGn.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep 
+Rfgn = function(a,b,n,t,s){
+  return( R2test(a,b,n,t+1,s+1) - R2test(a,b,n,t+1,s) - R2test(a,b,n,t,s+1) + R2test(a,b,n,t,s) )
+}
+
 
 #' Simulate time dependent fGn series
 #' 
@@ -490,7 +622,7 @@ ar1g_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' 
 #' @examples 
 #' n = 200
-#' sims = fgn_timedep_sim(n,sigma=1,a=0.2,b=0.7)
+#' sims = fgn_timedep_sim(n,sigma=1,a=0.6,b=0.3)
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation ar1 timedep 
@@ -500,6 +632,7 @@ fgn_timedep_sim <- function(n,sigma=1,a=0.6,b=0.3,Hs=NULL){
   # if(is.null(Hs)){
   #   Hs = a+b*seq(0,1,length.out=n)
   # }
+  
   sigmat = sigmaHmaker(sigma,a,b,n)
   sigmachol = chol(sigmat)
   noise = sigmachol%*%rnorm(n)

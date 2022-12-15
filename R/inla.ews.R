@@ -32,7 +32,7 @@
 #' n = 1000
 #' sigma = 1
 #' a=0.6
-#' b=-0.2
+#' b=-0.0
 #' F0 = 3
 #' sigmaf = 0.3
 #' time = 1:n
@@ -47,7 +47,7 @@
 #' 
 #' data = noise #+ muvek
 #' 
-#' object = inla.ews(data,forcing,model="ar1g",compute.mu=FALSE, print.progress=TRUE,
+#' object = inla.ews(data,forcing,model="ar1",compute.mu=FALSE, print.progress=TRUE,
 #'                     memory.true=phis)
 #' object = inla.ews(data,model="ar1g",compute.mu=FALSE, print.progress=TRUE,
 #'                     memory.true=phis)
@@ -57,11 +57,11 @@
 #' 
 #' ### fGn simulation example ###
 #' set.seed(123)
-#' n=200
+#' n=100
 #' sigma = 1.2
 #' time=seq(0,1,length.out=n)
 #' a = 0.6
-#' b = 0.35
+#' b = 0.25
 #' Hs = a+b*time
 #' 
 #' data = fgn_timedep_sim(n,a=a,b=b)
@@ -69,8 +69,8 @@
 #' object = inla.ews(data,model="fgn",memory.true=Hs)
 #' summary(object)
 #' plot(object)
-#' 
-#' 
+#' inla.options = list(control.mode=list(theta=object$inlafit$summary.hyperpar$mode,restart=TRUE))
+#' object2 = inla.ews(data,model="fgn",memory.true=Hs,inla.options=inla.options)
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
@@ -132,8 +132,8 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   }else if(tolower(model) %in% c("ar1g")){
     if(length(forcing)>0){
       stop("Forcing not yet implemented for model")
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1g.forcing,n=n,
-                                              time=df$time_normalized,forcing=forcing)
+      # rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1g.forcing,n=n,
+                                              # time=df$time_normalized,forcing=forcing)
     }else{
       rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1g,n=n,time=df$time)
     }

@@ -20,6 +20,56 @@ rgeneric.ews.fgn = function(
   tau = exp(15)
   envir = environment(sys.call()[[1]])
 
+  hyperg = function(a,b,c,z,trunc){
+    
+    kk = 0:(trunc-1)
+    
+    cp = cumprod((a+kk)*(b+kk)/(c+kk)*z/(1:trunc)  ) 
+    
+    s = 1 + sum(cp)
+    
+    return(s)
+    
+  }
+  
+  
+  incBeta = function(z,a,b,trim){
+    
+    hg = 1/a*z^a*hyperg(a,1-b,1+a,z,trunc=trim) #take this with a grain of salt, found by trial-and-error
+    
+    return(hg)
+  }
+  
+  gammas = function(a,b,n,t,s){
+    if((b *(s + t - 2 *max(s, t)))/n==0){
+      0
+    }
+    else{
+      ( gamma(-1 + 2 *a + (b *(s + t))/n)*gamma( 1 - 2 *a - (2*b *max(s, t))/n))/gamma((b *(s + t - 2 *max(s, t)))/n)
+    }
+  }
+  
+  
+  
+  R2test = function(a,b,n,t,s){
+    
+    (1/(2*a*n+b*(s+t)))*n*( sqrt( (a + (b* max(s,t)/n))*(-1 + 2 *a + (2* b* max(s,t)/n))/beta(
+      2 - 2 *(a + (b *max(s,t)/n)), -(1/2) + a + (b *max(s,t)/n)))*sqrt( (a + (b* min(s,t)/n))*(-1 + 2 *a + (2* b* min(s,t)/n))/beta(
+        2 - 2 *(a + (b *min(s,t)/n)), -(1/2) + a + (b *min(s,t)/n))))*(beta(-(1/2) + a + (b *max(s, t))/n, -((
+          2* (-1 + a)* n + b* max(s, t) + b *min(s, t))/n))* beta((n + b* max(s, t) - b* min(s, t))/ n, ((-1 + 2* a)* n + b* max(s, t) + b* min(s, t))/n)* min(s, t)^( 2* a + (b* (s + t))/n) + 
+            beta(-(1/2) + a + (b *min(s, t))/n, -((2*(-1 + a)*n +b*max(s, t) + b*min(s, t))/n))*
+            ((-incBeta(min(s, t)/max(s, t),  1-2*a-(2*b*max(s, t))/n, -1 + 2 *a + (b *(s + t))/n,100) 
+              + gammas(a,b,n,t,s)
+              
+            )*min(s, t)^(2 *a + (b* (s + t))/n) + (n *
+                                                     hyperg(2 - 2* a - (b *(s + t))/n, (n - b* max(s, t) + b *min(s, t))/n, (2 *n - b* max(s, t) + b* min(s, t))/n, min(s, t)/max(s, t),100) 
+                                                   *max(s, t)^(2*a+(b*(s + t))/n)*(min(s, t)/max(s, t))^(1+(b*(-max(s, t)+min(s, t)))/n))/(n-b*max(s, t)+b*min(s, t))))
+  }
+  
+  Rfgn = function(a,b,n,t,s){
+    R2test(a,b,n,t+1,s+1) - R2test(a,b,n,t+1,s) - R2test(a,b,n,t,s+1) + R2test(a,b,n,t,s)
+  }
+  
   interpret.theta = function() {
     if(!is.null(envir)){
       timee=get("time",envir)
@@ -54,17 +104,17 @@ rgeneric.ews.fgn = function(
     return (matrix(1,nn,nn))
   }
 
-  greensH = function(t,s,a,b,n){
-    if(t-s<0){
-      return(0)
-    }else{
-      H = a+b*max(t,s)/n
-      # H = a+b*min(t,s)/n
-      # H = a+b*(t+s)/2/n
-      ret = (t-s+0.5)^(H-3/2)
-      return(ret)
-    }
-  }
+  # greensH = function(t,s,a,b,n){
+  #   if(t-s<0){
+  #     return(0)
+  #   }else{
+  #     H = a+b*max(t,s)/n
+  #     # H = a+b*min(t,s)/n
+  #     # H = a+b*(t+s)/2/n
+  #     ret = (t-s+0.5)^(H-3/2)
+  #     return(ret)
+  #   }
+  # }
   
   
   Q = function()  {
@@ -78,9 +128,9 @@ rgeneric.ews.fgn = function(
     sx = 1/sqrt(hyperparam$kappa)
     a = hyperparam$a
     b=hyperparam$b
-    H2 = 2*Hs
-    k=0:(nn-1)
-    # sigmat = matrix(NA,nn,nn)
+    # H2 = 2*Hs
+    # k=0:(nn-1)
+    # # sigmat = matrix(NA,nn,nn)
     # for(i in 1:nn){
     #   for(j in 1:nn){
     #     #t = max(i,j)
@@ -92,13 +142,28 @@ rgeneric.ews.fgn = function(
     # }
     # #sigmat = sigmamaker(nn,sx,Hs)
 
-    Gmat = matrix(NA,nn,nn)
-    for(i in 1:nn){
-      for(j in 1:nn){
-        Gmat[i,j] = greensH(i,j,a,b,nn)
+    # Gmat = matrix(NA,nn,nn)
+    # for(i in 1:nn){
+    #   for(j in 1:nn){
+    #     Gmat[i,j] = greensH(i,j,a,b,nn)
+    #   }
+    # }
+    # covmat = sx^2*Gmat%*%t(Gmat)
+    
+    covmat = data.frame(row.names = NULL,col.names=NULL)
+    
+    for (i in 1:nn) {
+      for (j in 1:nn) {
+        covmat[i,j] =round( Rfgn(a,b,nn,i,j),3)
       }
-    }
-    covmat = sx^2*Gmat%*%t(Gmat)
+    }    
+    
+    # url = paste0("https://www.wolframcloud.com/obj/e965ae9a-187b-469b-9d5c-c9f5eaa14656?n1=",
+    #              nn,"&a1=",a,"&b1=",b,"&sigma1=",sx)
+    # 
+    # df = scan(url)
+    # 
+    # covmat = matrix(df,ncol=n)
     
     return (solve(covmat))
   }

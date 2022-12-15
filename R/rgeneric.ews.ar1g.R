@@ -22,9 +22,11 @@ rgeneric.ews.ar1g = function(
   
   interpret.theta = function() {
     if(!is.null(envir)){
-      timee=get("time",envir)
+      timme=get("time",envir)
       nn=get("n",envir)
     }
+    timee = timme-timme[1]
+    timee = timee/timee[nn]
     kappa = exp(theta[1])
     bmax = 0.5/(timee[nn]-timee[1])
     bmin = -bmax
@@ -74,34 +76,49 @@ rgeneric.ews.ar1g = function(
     }
     
     hyperparam = interpret.theta()
-    Hs = hyperparam$phis
-    kappa = hyperparam$kappa
     sx = 1/sqrt(hyperparam$kappa)
     a = hyperparam$a
     b=hyperparam$b
-    H2 = 2*Hs
-    k=0:(nn-1)
-    # sigmat = matrix(NA,nn,nn)
+    phis = hyperparam$phis
+    lambdas = -log(phis)
+    
+    kappas = numeric(nn)
+    
+    kappas[1] = 2*lambdas[1]/sx^2
+    kappas[2:nn] = 1/sx^2*1/( 1/(2*lambdas[2:nn])-phis[2:nn]^2/(2*lambdas[1:(nn-1)]) )
+    
+    ii = c(1:nn,2:nn) ; jj = c(1:nn,1:(nn-1))
+    xx = c(kappas[1:(nn-1)]+phis[2:nn]^2*kappas[2:nn],kappas[nn],
+           -phis[2:nn]*kappas[2:nn])
+    Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+    return(Q)
+    # Hs = hyperparam$phis
+    # kappa = hyperparam$kappa
+    # 
+    # 
+    # H2 = 2*Hs
+    # k=0:(nn-1)
+    # # sigmat = matrix(NA,nn,nn)
+    # # for(i in 1:nn){
+    # #   for(j in 1:nn){
+    # #     #t = max(i,j)
+    # #     t = (i+j)/2/nn
+    # #     H2 = 2*(hyperparam$a+hyperparam$b*t)
+    # #     k=abs(i-j)
+    # #     sigmat[i,j] = sx^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+    # #   }
+    # # }
+    # # #sigmat = sigmamaker(nn,sx,Hs)
+    # 
+    # Gmat = matrix(NA,nn,nn)
     # for(i in 1:nn){
     #   for(j in 1:nn){
-    #     #t = max(i,j)
-    #     t = (i+j)/2/nn
-    #     H2 = 2*(hyperparam$a+hyperparam$b*t)
-    #     k=abs(i-j)
-    #     sigmat[i,j] = sx^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
+    #     Gmat[i,j] = greensar1(i,j,a,b,nn)
     #   }
     # }
-    # #sigmat = sigmamaker(nn,sx,Hs)
+    # covmat = sx^2*Gmat%*%t(Gmat)
     
-    Gmat = matrix(NA,nn,nn)
-    for(i in 1:nn){
-      for(j in 1:nn){
-        Gmat[i,j] = greensar1(i,j,a,b,nn)
-      }
-    }
-    covmat = sx^2*Gmat%*%t(Gmat)
-    
-    return (solve(covmat))
+    # return (solve(covmat))
   }
   
   log.norm.const = function(){

@@ -25,8 +25,14 @@ Returns the simulated time series as a \code{numeric} object.
 This function produces samples from a given time dependent AR(1) process using Green's function instead of AR(1) directly.
 }
 \examples{
-n = 200
-sims = ar1_timedep_sim(n,sigma=1,a=0.2,b=0.7)
+n = 600
+a=0.5
+b=-0.
+phis = seq(from=a,to=a+b,length.out=n)
+sims = ar1g_timedep_sim(n,sigma=1,phis=phis)
+res = inla.ews(sims,model="ar1g",memory.true=phis)
+plot(res)
+summary(res)
 }
 \seealso{
 \code{\link{inla.ews}}
