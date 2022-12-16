@@ -457,9 +457,6 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' b=-0.1
 #' phis = seq(from=a,to=a+b,length.out=n)
 #' sims = ar1g_timedep_sim(n,sigma=1,a=a,b=b)
-#' res = inla.ews(sims,model="ar1g",memory.true=phis)
-#' plot(res)
-#' summary(res)
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}

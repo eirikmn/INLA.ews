@@ -25,8 +25,10 @@ Returns the simulated time series as a \code{numeric} object.
 This function produces samples from a given time dependent fractional Gaussian noise process.
 }
 \examples{
+\donttest{
 n = 200
 sims = fgn_timedep_sim(n,sigma=1,a=0.6,b=0.3)
+}
 }
 \seealso{
 \code{\link{inla.ews}}

@@ -55,7 +55,7 @@
 #' 
 #' ### fGn simulation example ###
 #' set.seed(123)
-#' n=100
+#' n=80
 #' sigma = 1.2
 #' time=seq(0,1,length.out=n)
 #' a = 0.6
@@ -67,8 +67,6 @@
 #' object = inla.ews(data,model="fgn",memory.true=Hs)
 #' summary(object)
 #' plot(object)
-#' inla.options = list(control.mode=list(theta=object$inlafit$summary.hyperpar$mode,restart=TRUE))
-#' object2 = inla.ews(data,model="fgn",memory.true=Hs,inla.options=inla.options)
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
