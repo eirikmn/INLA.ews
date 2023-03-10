@@ -12,7 +12,8 @@
 #' should be computed (this is slower).
 #' @param timesteps Numeric vector describing time steps of input variables (if steps are not equidistant).
 #' @param stepsize Numeric stating the step size used in the optimization procedure in 
-#' the INLA program. If convergence cannot be achieved, then changing this will sometimes help. 
+#' the INLA program. If convergence cannot be achieved, then changing this will sometimes help. If 
+#' an array of length>=2 is given, INLA will rerun, starting at the previous optima, with given stepsizes. 
 #' Default value is \code{stepsize=0.01}.
 #' @param num.threads Integer stating how many cores should be used by the INLA program. 
 #' For rgeneric models (as is used here) stability is sometimes improved if \code{num.threads=1}, 
@@ -98,7 +99,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   
   inla.options = set.options(inla.options, inla.options.default()) #fill missing default settings
   inla.options$num.threads=num.threads
-  inla.options$control.inla$h = stepsize
+  
   
   
   n=length(data)
@@ -174,23 +175,39 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   
   
   
-  if(print.progress){
-    cat("Initiating inla program..\n",sep="")
-  }
+  
    # r = INLA::inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
    #          verbose=FALSE,num.threads = 1)
-   r <- tryCatch(
-     do.call(INLA::inla, c(list(formula = formula,data = df,family = "gaussian"),inla.options) ),
-     error=warning
-   )
-   
-   if(is.character(r)){
-     feil = "\n Convergence can sometimes be improved by changing the step size."
-     stop(paste0(r,feil))
-   }
-   if(print.progress){
-     cat("Completed INLA optimization in ",format(r$cpu.used[4],digits=3)," seconds..\n",sep="")
-   }
+  
+  nstepsizes = length(stepsize)
+  for(i in nstepsizes){
+    if(print.progress && nstepsizes==1){
+      cat("Initiating inla program..\n",sep="")
+      
+    }else if(print.progress && nstepsizes>=1){
+      cat("Initiating inla program. Iteration ",i," of ",nstepsizes,".\n",sep="")
+      if(i >= 2){
+        #inla.options$control.mode$theta = r$summary.hyperpar$mode
+        inla.options$control.mode$result = r #use previous theta and x-mode
+      }
+    }
+    inla.options$control.inla$h = stepsize[i]
+    
+    
+    r <- tryCatch(
+      do.call(INLA::inla, c(list(formula = formula,data = df,family = "gaussian"),inla.options) ),
+      error=warning
+    )
+    
+    if(is.character(r)){
+      feil = "\n Convergence can sometimes be improved by changing the step size."
+      stop(paste0(r,feil))
+    }
+    if(print.progress){
+      cat("Completed INLA optimization in ",format(r$cpu.used[4],digits=3)," seconds..\n",sep="")
+    }
+  }
+    
   object = list(formula=formula,inlafit=r,.args=list(data=data,
                                                      forcing=forcing,
                                                      call = inla.ews.call,
