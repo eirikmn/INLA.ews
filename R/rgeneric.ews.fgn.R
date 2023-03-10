@@ -154,7 +154,8 @@ rgeneric.ews.fgn = function(
     
     for (i in 1:nn) {
       for (j in 1:nn) {
-        covmat[i,j] =round( Rfgn(a,b,nn,i,j),3)
+        #covmat[i,j] =round( Rfgn(a,b,nn,i,j),3)
+        covmat[i,j] = Rfgn(a,b,nn,i,j)
       }
     }    
     
