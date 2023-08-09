@@ -36,7 +36,8 @@ should be computed (this is slower).}
 \item{timesteps}{Numeric vector describing time steps of input variables (if steps are not equidistant).}
 
 \item{stepsize}{Numeric stating the step size used in the optimization procedure in 
-the INLA program. If convergence cannot be achieved, then changing this will sometimes help. 
+the INLA program. If convergence cannot be achieved, then changing this will sometimes help. If 
+an array of length>=2 is given, INLA will rerun, starting at the previous optima, with given stepsizes. 
 Default value is \code{stepsize=0.01}.}
 
 \item{num.threads}{Integer stating how many cores should be used by the INLA program. 
