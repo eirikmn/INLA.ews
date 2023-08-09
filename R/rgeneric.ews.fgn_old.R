@@ -9,7 +9,7 @@
 #'
 #'
 #' @importFrom stats dnorm
-rgeneric.ews.fgn_old = function(
+rgeneric.ews.fgn = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
 {

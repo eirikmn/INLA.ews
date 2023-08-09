@@ -19,3 +19,8 @@ Defines the rgeneric model structure for the fractional Gaussian noise model
 with time-dependent correlation. This includes key functions that provide information on precision matrix, mean vector, priors, graph etc.
 This is intended for internal use only, but the documentation is included here in case someone want to change something.
 }
+\references{
+{
+  Jelena Ryvkina, Fractional Brownian Motion with Variable Hurst Parameter: Definition and Properties, Journal of Theoretical Probability, Volume 28, 2015, Pages 866-891, https://http://doi.org/10.1007/s10959-013-0502-3
+}
+}

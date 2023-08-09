@@ -19,6 +19,8 @@ if(FALSE){
   yyy = fgn_timedep_sim(n,sigma=1,Hs = Hs2)
   
   r = inla.ews(y,model="fgn",memory.true=Hs)
+  
+  ## send in time vector (which needs to be inversed when inverting y)
   rr = inla.ews(yy,model="fgn",memory.true=Hs2)
   rrr = inla.ews(yyy,model="fgn",memory.true=Hs2)
   summary(r)

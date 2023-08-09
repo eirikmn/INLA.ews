@@ -12,7 +12,7 @@
 #'   Jelena Ryvkina, Fractional Brownian Motion with Variable Hurst Parameter: Definition and Properties, Journal of Theoretical Probability, Volume 28, 2015, Pages 866-891, https://http://doi.org/10.1007/s10959-013-0502-3
 #' }
 #' @importFrom stats dnorm
-rgeneric.ews.fgn = function(
+rgeneric.ews.fgn_new = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
 {
@@ -59,7 +59,7 @@ rgeneric.ews.fgn = function(
   covmatmaker = function(HH, sx=1){
     
     nn = length(HH)
-    cormat = matrix(NA,nrow=n,ncol=n)
+    cormat = matrix(NA,nrow=nn,ncol=nn)
     
     for(t in 1:nn){
       for(s in 1:nn){

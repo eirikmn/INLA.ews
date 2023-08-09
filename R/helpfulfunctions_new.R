@@ -22,27 +22,22 @@
 #' @keywords covariance matrix fgn
 #' @export
 sigmaHmaker = function(sigma,a,b,n){
-  # n=length(Hs)
-  #H2 = 2*Hs
-  k=0:(n-1)
-   sigmat = matrix(NA,n,n)
-  # for(i in 1:n){
-  #   for(j in 1:n){
-  #     t = min(i,j)
-  #     #t = (i+j)/2
-  #     k=abs(i-j)
-  #     H2 = 2*(a+b*t/n)
-  #     #sigmat[i,j] = sigma^2/2*( abs(k-1)^H2[t]-2*abs(k)^H2[t]+abs(k+1)^H2[t] )
-  #     sigmat[i,j] = sigma^2/2*( abs(k-1)^H2-2*abs(k)^H2+abs(k+1)^H2 )
-  #   }
-  # }
   
-  for(i in 1:n){
-    for(j in 1:n){
-      sigmat[i,j] = Rfgn(a,b,n,i,j)
+  HH = seq(from=a,to=a+b,length.out=n)
+   sigmat = matrix(NA,n,n)
+  
+  for(t in 1:n){
+    for(s in 1:n){
+      Ht = HH[t]
+      Hs = HH[s]
+      if (s<t){
+        sigmat[t,s] = fgncor(t,s,Ht,Hs)
+      }else{
+      sigmat[t,s] = fgncor(s,t,Hs,Ht)
+      }
     }
   }
-  sigmat = sigma*sigmat
+  sigmat = sigma^2*sigmat
   return(sigmat)
 }
 
@@ -65,7 +60,7 @@ sigmaHmaker = function(sigma,a,b,n){
 #' a=0.6
 #' b=0.2
 #' sigma = 1
-#' cov.matrix <- sigmaHmaker(sigma,a,b,n)
+#' cov.matrix <- sigmaar1maker(sigma,a,b,n)
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords covariance matrix fgn
@@ -451,14 +446,13 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' @return Returns the simulated time series as a \code{numeric} object.
 #' 
 #' @examples 
+#' \donttest{
 #' n = 600
 #' a=0.5
-#' b=-0.
+#' b=-0.1
 #' phis = seq(from=a,to=a+b,length.out=n)
-#' sims = ar1g_timedep_sim(n,sigma=1,phis=phis)
-#' res = inla.ews(sims,model="ar1g",memory.true=phis)
-#' plot(res)
-#' summary(res)
+#' sims = ar1g_timedep_sim(n,sigma=1,a=a,b=b)
+#' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation ar1 timedep 
@@ -489,7 +483,7 @@ ar1g_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
   # Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
   # covmat = solve(Q)
   # noise = chol(covmat)%*%rnorm(n)
-  # return(as.numeric(noise))
+   return(as.numeric(noise))
 }
 
 
@@ -507,7 +501,7 @@ ar1g_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation fgn timedep 
-hyperg = function(a,b,c,z,trunc){
+hyperg2F1 = function(a,b,c,z,trunc=300){
   kk = 0:(trunc-1)
   cp = cumprod((a+kk)*(b+kk)/(c+kk)*z/(1:trunc)  ) 
   s = 1 + sum(cp)
@@ -528,7 +522,7 @@ hyperg = function(a,b,c,z,trunc){
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation fgn timedep 
 incBeta = function(z,a,b,trunc){
-  hg = 1/a*z^a*hyperg(a,1-b,1+a,z,trunc=trunc)
+  hg = 1/a*z^a*hyperg2F1(a,1-b,1+a,z,trunc=trunc)
   return(hg)
 }
 
@@ -559,53 +553,95 @@ gammas = function(a,b,n,t,s){
 }
 
 
-#' Covariance of time-dependent fractional Brownian motion
+#' Time dependent constant 
 #' 
-#' Covariance function of fractional Brownian motion with time-dependent increments.
+#' Necessary for computing covariance function of time-varying fGn
 #' 
-#' @param a Starting point of Hurst exponent (intercept).
-#' @param b Slope of Hurst exponent.
-#' @param n Length of process.
-#' @param t First index.
-#' @param s Second index.
-#' @return Returns the covariance function of the time-dependent fBm.
-#' 
-#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
-#' @seealso \code{\link{inla.ews}}
-#' @keywords simulation fbm timedep 
-R2test = function(a,b,n,t,s){
-  return(
-  (1/(2*a*n+b*(s+t)))*n*( sqrt( (a + (b* max(s,t)/n))*(-1 + 2 *a + (2* b* max(s,t)/n))/beta(
-    2 - 2 *(a + (b *max(s,t)/n)), -(1/2) + a + (b *max(s,t)/n)))*sqrt( (a + (b* min(s,t)/n))*(-1 + 2 *a + (2* b* min(s,t)/n))/beta(
-      2 - 2 *(a + (b *min(s,t)/n)), -(1/2) + a + (b *min(s,t)/n))))*(beta(-(1/2) + a + (b *max(s, t))/n, -((
-        2* (-1 + a)* n + b* max(s, t) + b *min(s, t))/n))* beta((n + b* max(s, t) - b* min(s, t))/ n, ((-1 + 2* a)* n + b* max(s, t) + b* min(s, t))/n)* min(s, t)^( 2* a + (b* (s + t))/n) + 
-          beta(-(1/2) + a + (b *min(s, t))/n, -((2*(-1 + a)*n +b*max(s, t) + b*min(s, t))/n))*
-          ((-incBeta(min(s, t)/max(s, t),  1-2*a-(2*b*max(s, t))/n, -1 + 2 *a + (b *(s + t))/n,100) 
-            + gammas(a,b,n,t,s)
-            
-          )*min(s, t)^(2 *a + (b* (s + t))/n) + (n *
-                                                   hyperg(2 - 2* a - (b *(s + t))/n, (n - b* max(s, t) + b *min(s, t))/n, (2 *n - b* max(s, t) + b* min(s, t))/n, min(s, t)/max(s, t),100) 
-                                                 *max(s, t)^(2*a+(b*(s + t))/n)*(min(s, t)/max(s, t))^(1+(b*(-max(s, t)+min(s, t)))/n))/(n-b*max(s, t)+b*min(s, t))))
-  )
-}
-
-#' Covariance of time-dependent fractional Gaussian noise
-#' 
-#' Covariance function of fractional Gaussian noise with time-dependent increments.
-#' 
-#' @param a Starting point of Hurst exponent (intercept).
-#' @param b Slope of Hurst exponent.
-#' @param n Length of process.
-#' @param t First index.
-#' @param s Second index.
-#' @return Returns the covariance function of the time-dependent fGn.
+#' @param H Hurst exponent
+#' @return Returns the value of the function.
 #' 
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation fgn timedep 
-Rfgn = function(a,b,n,t,s){
-  return( R2test(a,b,n,t+1,s+1) - R2test(a,b,n,t+1,s) - R2test(a,b,n,t,s+1) + R2test(a,b,n,t,s) )
+ch = function(H){
+  return(sqrt( H*(2*H-1)/(beta(2-2*H, H-0.5)) ))
 }
+
+#' Product of time dependent constant 
+#' 
+#' Necessary for computing covariance function of time-varying fGn
+#' 
+#' @param Ht First Hurst exponent
+#' @param Hs Second Hurst exponent
+#' @return Returns the value of the function.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep
+cts = function(Ht,Hs){
+  return(ch(Ht)*ch(Hs))
+}
+
+#' Beta1 computation
+#' 
+#' Necessary for computing covariance function of time-varying fGn
+#' 
+#' @param Ht First Hurst exponent
+#' @param Hs Second Hurst exponent
+#' @return Returns the value of the function.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep
+beta1 = function(Ht,Hs){
+  return(beta(Ht-0.5, 2-Ht-Hs))
+}
+
+#' Beta1 computation
+#' 
+#' Necessary for computing covariance function of time-varying fGn
+#' 
+#' @param Ht First Hurst exponent
+#' @param Hs Second Hurst exponent
+#' @return Returns the value of the function.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fgn timedep
+beta2 = function(Ht,Hs){
+  return(beta(Ht-Hs+1, Ht+Hs-1))
+}
+
+
+#' Correlation of time-dependent fractional Brownian motion
+#' 
+#' Correlation of fractional Brownian motion with time-dependent increments.
+#' 
+#' @param t First index.
+#' @param s Second index.
+#' @param Ht Hurst exponent at first index
+#' @param Hs Hurst exponent at second index
+#' @return Returns the correlation between indices 't' and 's' of the time-dependent fBm.
+#' 
+#' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
+#' @seealso \code{\link{inla.ews}}
+#' @keywords simulation fbm timedep 
+fgncor = function(t,s, Ht,Hs){
+  
+  
+  return( cts(Ht,Hs)/(Ht+Hs) * ( beta1(Ht,Hs)*beta2(Ht,Hs)*s^(Ht+Hs) +
+                                   beta1(Hs,Ht)*beta2(Hs,Ht)*t^(Ht+Hs) +
+                                   beta1(Hs,Ht)*t*(t-s)^(Ht+Hs-1)/(Ht+Hs-1)*(t/s)^(Ht-Hs) *
+                                   (hyperg2F1(1,2*Ht,Hs+Ht,(s-t)/s) -
+                                      hyperg2F1(1,Ht-Hs,Hs+Ht,(s-t)/s)
+                                   )
+  )
+  )
+  
+
+}
+
+
 
 
 #' Simulate time dependent fGn series
@@ -621,8 +657,10 @@ Rfgn = function(a,b,n,t,s){
 #' @return Returns the simulated time series as a \code{numeric} object.
 #' 
 #' @examples 
+#' \donttest{
 #' n = 200
 #' sims = fgn_timedep_sim(n,sigma=1,a=0.6,b=0.3)
+#' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @seealso \code{\link{inla.ews}}
 #' @keywords simulation ar1 timedep 
