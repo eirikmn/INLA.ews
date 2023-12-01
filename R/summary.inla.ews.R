@@ -38,6 +38,17 @@ summary.inla.ews = function(object,digits=4L,...){
   cpu = c(object$cpu.used$inla,object$cpu.used$gather,object$cpu.used$total)
   names(cpu) = c("Running INLA","Post processing","Total")
   out = c(out, list(cpu=cpu))
+  
+  fixednames = rownames(object$inlafit$summary.fixed)
+  if(!is.null(fixednames)){
+    interceptmat = round(object$inlafit$summary.fixed[,1:5],digits=digits)
+  }else{
+    interceptmat = NULL
+  }
+  out = c(out, list(interceptmat=interceptmat))
+  
+  
+
   hypers = matrix(round(
     c(object$results$summary$a$mean,object$results$summary$a$sd,
       object$results$summary$a$quant0.025,object$results$summary$a$quant0.5,
@@ -68,35 +79,44 @@ summary.inla.ews = function(object,digits=4L,...){
   }else{
     is.forcing=FALSE
   }
+  
+  nextrahyps = length(nrow(object$inlafit$summary.hyperpar))
+  if(is.forcing){
+    nextrahyps = nextrahyps - 2
+  }
+  if(nextrahyps>=1){
+    extrahypers = round(object$inlafit$summary.hyperpar[1:nextrahyps,1:5], digits=digits)
+  }else{
+    extrahypers = NULL
+  }
+  out = c(out,list(extrahypers=extrahypers))
+  
   rownames(hypers)=rownames
   out = c(out, hypers=list(hypers))
   out = c(out, b_positive = object$results$summary$b$prob_positive)
   n=length(object$.args$data)
   out = c(out,list(n=n))
+  
+  is.irreg = diff(range(diff(object$.args$time_normalized)))!=0
+  out = c(out, list(is.irreg=is.irreg))
+  
   if(tolower(object$.args$model) %in% c("ar1","ar(1)","1","ar1g")){
-    memorystart = c(object$results$summary$phi$mean[1],
-                    object$results$summary$phi$sd[1],
-                    object$results$summary$phi$q0.025[1],
-                    object$results$summary$phi$q0.5[1],
-                    object$results$summary$phi$q0.975[1])
-    memoryend = c(object$results$summary$phi$mean[n],
-               object$results$summary$phi$sd[n],
-               object$results$summary$phi$q0.025[n],
-               object$results$summary$phi$q0.5[n],
-               object$results$summary$phi$q0.975[n])
-    rownames=c("phi_1","phi_n")
-  }else if(tolower(object$.args$model) %in% c("fgn","lrd")){
-    memorystart = c(object$results$summary$H$mean[1],
-                    object$results$summary$H$sd[1],
-                    object$results$summary$H$q0.025[1],
-                    object$results$summary$H$q0.5[1],
-                    object$results$summary$H$q0.975[1])
-    memoryend = c(object$results$summary$H$mean[n],
-                  object$results$summary$H$sd[n],
-                  object$results$summary$H$q0.025[n],
-                  object$results$summary$H$q0.5[n],
-                  object$results$summary$H$q0.975[n])
-    rownames=c("H_1","H_n")
+    memorystart = c(object$results$summary$phi0$mean[1],
+                    object$results$summary$phi0$sd[1],
+                    object$results$summary$phi0$q0.025[1],
+                    object$results$summary$phi0$q0.5[1],
+                    object$results$summary$phi0$q0.975[1])
+    memoryend = c(object$results$summary$phi0$mean[n],
+               object$results$summary$phi0$sd[n],
+               object$results$summary$phi0$q0.025[n],
+               object$results$summary$phi0$q0.5[n],
+               object$results$summary$phi0$q0.975[n])
+    if(is.irreg){
+      rownames=c("phi0[1]","phi0[n]")
+    }else{
+      rownames=c("phi[1]","phi[n]")
+    }
+    
   }
   
   memorymat = rbind(memorystart,memoryend)
@@ -157,12 +177,14 @@ print.summary.inla.ews = function(x,digits=4L,...){
   print(round(x$cpu,digits=digits))
   #cat("\n",sep="")
   
-  cat("\nPosterior marginal distributions for all hyperparameters have been computed.\n",sep="")
-  if(x$compute.mu==2 && x$is.forcing){
-    cat("Mean and 95% credible intervals for forced response have also been computed.\n",sep="")
-  }else if(x$compute.mu==1 && x$is.forcing){
-    cat("Mean and standard deviation for forced response have also been computed.\n",sep="")
+  cat("\nPosterior marginal distributions for all parameters have been computed.\n",sep="")
+  
+  if(!is.null(x$interceptmat)){
+    cat("\nSummary statistics for fixed effects:\n",sep="")
+    print(x$interceptmat)
   }
+  
+  
   
   if(x$is.forcing){
     cat("\nSummary statistics for using ",x$model," model (with forcing):\n",sep="")
@@ -171,8 +193,23 @@ print.summary.inla.ews = function(x,digits=4L,...){
   }
   print(x$hypers)
   
-  cat("\nSummary for first and last memory variable:\n",sep="")
-  print(x$memory)
+  if(!is.null(x$extrahypers)){
+    cat("\nAdditional hyperparameters for random effects:\n",sep="")
+    print(x$extrahypers)
+  }
+  
+  if(x$is.irreg){
+    cat("\nMemory evolution is sampled on an irregular grid. \nSummary for first and last point in smoothed trajectory (a+b*time):\n",sep="")
+    print(x$memory)
+  }else{
+    cat("\nSummary for first and last memory variable:\n",sep="")
+    print(x$memory)
+  }
+  
+  
+  if(x$is.forcing){
+    cat("Mean and 95% credible intervals for forced response have also been computed.\n",sep="")
+  }
   
   
   cat("\nProbability of positive trend is ",x$b_positive,"\n",sep="")

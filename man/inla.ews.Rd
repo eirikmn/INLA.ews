@@ -11,8 +11,9 @@ inla.ews(
   model = "ar1",
   compute.mu = 0,
   timesteps = NULL,
-  stepsize = 0.01,
+  stepsize = 0.005,
   num.threads = 1,
+  nsims = 10000,
   inla.options = NULL,
   print.progress = FALSE,
   memory.true = NULL
@@ -43,6 +44,9 @@ Default value is \code{stepsize=0.01}.}
 \item{num.threads}{Integer stating how many cores should be used by the INLA program. 
 For rgeneric models (as is used here) stability is sometimes improved if \code{num.threads=1}, 
 which is the default value here. Increasing this might improve runtime.}
+
+\item{nsims}{Integer stating the number of simulations used in Monte Carlo estimation of parameters
+not obtained directly from INLA. Default 10000.}
 
 \item{inla.options}{List giving options (such as step length and the number of threads to be used),
 to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.}

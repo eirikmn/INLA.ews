@@ -18,6 +18,8 @@
 #' @param num.threads Integer stating how many cores should be used by the INLA program. 
 #' For rgeneric models (as is used here) stability is sometimes improved if \code{num.threads=1}, 
 #' which is the default value here. Increasing this might improve runtime. 
+#' @param nsims Integer stating the number of simulations used in Monte Carlo estimation of parameters
+#' not obtained directly from INLA. Default 10000. 
 #' @param inla.options List giving options (such as step length and the number of threads to be used),
 #' to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.
 #' @param print.progress boolean indicating whether or not progress should be printed to screen.
@@ -72,8 +74,9 @@
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
 #' @export
+#' @importFrom stats as.formula
 inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute.mu=0,
-                     timesteps=NULL, stepsize=0.01,num.threads=1,
+                     timesteps=NULL, stepsize=0.005,num.threads=1, nsims=10000,
                      inla.options=NULL,print.progress=FALSE,
                      memory.true=NULL){
 
@@ -99,21 +102,39 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   
   inla.options = set.options(inla.options, inla.options.default()) #fill missing default settings
   inla.options$num.threads=num.threads
+  inla.options$control.compute = list(config=TRUE)
   
+  if(is.null(dim(data))){
+    n = length(data)
+  }else{
+    n = nrow(data)
+  }
   
-  
-  n=length(data)
-  
-  intercept = mean(data[1:20])
+  #intercept = mean(data[1:20])
   if(!is.null(timesteps)){
     time=timesteps
   }else{
+    timesteps=1:n
     time=1:n
   }
-  time_normalized = time-time[1]; time_normalized=time_normalized/time_normalized[n]
   
-  df = data.frame(y = data-intercept,data = data,idy=1:n,time_normalized=time_normalized,
-                  time=time)
+  #time_normalized = time-time[1]; time_normalized=time_normalized/time_normalized[n]
+  time_normalized = (time-min(time))/max(time-min(time))
+  if(time[1]>time[n]){
+    flippedtime = TRUE
+    time_normalized = 1-time_normalized
+  }else{
+    flippedtime=FALSE
+  }
+  
+  if(is.null(dim(data))){
+    df = data.frame(y = data,data = data,idy=1:n,time_normalized=time_normalized,
+                    time=time)
+  }else{
+    df=data
+  }
+  
+  
 
   if(print.progress){
     cat("Setting up rgeneric model..\n",sep="")
@@ -121,56 +142,34 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   if(tolower(model) %in% c("ar1","ar(1)","1")){
     if(length(forcing)>0){
       
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1.forcing,n=n,
-                                              time=df$time_normalized,forcing=forcing)
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1.forcing,n=n,
+                                              time=time_normalized,forcing=forcing)
     }else{
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1,n=n,time=df$time)
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1,n=n,
+                                              time=time_normalized)
     }
-  }else if(tolower(model) %in% c("ar1g")){
-    if(length(forcing)>0){
-      stop("Forcing not yet implemented for model")
-      # rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1g.forcing,n=n,
-                                              # time=df$time_normalized,forcing=forcing)
-    }else{
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.ar1g,n=n,time=df$time)
-    }
-  }else if(tolower(model) %in% c("fgn","lrd")){
-    warning("This model is considerably slower than the AR(1) process. Expect longer computational time.\n")
-    if(length(forcing)>0){
-      if(is.null(timesteps)){
-        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
-                                                time=df$time_normalized,forcing=forcing)
-      }else{
-        # rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing.uneven,n=n,
-        #                                         time=time_normalized,forcing=forcing)
-        warning("Uneven step size is currently not supported. Assuming equidistance and proceeding.")
-        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
-                                                time=df$time_normalized,forcing=forcing)
-      }
-      
-    }else{
-      if(is.null(timesteps)){
-        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn,n=n,time=df$time_normalized)
-      }else{
-        # rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.uneven,n=n,time=time_normalized)
-        warning("Uneven step size is currently not supported. Assuming equidistance and proceeding.")
-        rgen_model = INLA::inla.rgeneric.define(rgeneric.ews.fgn.forcing,n=n,
-                                                time=df$time_normalized,forcing=forcing)
-      }
-      
-    }
-    
   }
   
-  # find initial guesses for hyperparameters
-  if(length(forcing)>0){
-    sigma_ini = (data[n]-data[1])/(forcing[n]-forcing[1])
-    F0_ini = data[1]/sigma_ini-forcing[1]
-    
+  
+  if(is.null(formula)){
+    fstr0 = "y ~ 1"
+    formula2 = y ~ 1+ f(idy, model=rgen_model)
+    if(is.null(dim(data))){
+      df = data.frame(y=data,idy=1:n)
+    }else{
+      df$idy = 1:n
+    }
   }else{
-    
+    fstr0 = deparse(formula)
+    fstr = paste0(fstr0,"+ f(idy, model=rgen_model) ")
+    formula2 = as.formula(fstr)
+    if(is.null(dim(data))){
+      df = data.frame(y=data,idy=1:n)
+    }else{
+      df$idy = 1:n
+    }
   }
-  formula = y ~ -1+ f(idy, model=rgen_model) 
+  
   
   
   
@@ -180,7 +179,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
    #          verbose=FALSE,num.threads = 1)
   
   nstepsizes = length(stepsize)
-  for(i in nstepsizes){
+  for(i in 1:nstepsizes){
     if(print.progress && nstepsizes==1){
       cat("Initiating inla program..\n",sep="")
       
@@ -189,13 +188,15 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       if(i >= 2){
         #inla.options$control.mode$theta = r$summary.hyperpar$mode
         inla.options$control.mode$result = r #use previous theta and x-mode
+      }else{
+        inla.options$control.mode$result = NULL
       }
     }
     inla.options$control.inla$h = stepsize[i]
     
     
     r <- tryCatch(
-      do.call(INLA::inla, c(list(formula = formula,data = df,family = "gaussian"),inla.options) ),
+      do.call(INLA::inla, c(list(formula = formula2,data = df,family = "gaussian"),inla.options) ),
       error=warning
     )
     
@@ -208,12 +209,15 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
     }
   }
     
-  object = list(formula=formula,inlafit=r,.args=list(data=data,
+  object = list(formula=formula2,inlafit=r,.args=list(data=data,
                                                      forcing=forcing,
                                                      call = inla.ews.call,
                                                      inladata=df,
                                                      model=model,
-                                                     intercept=intercept,
+                                                     timesteps=timesteps,
+                                                     time_normalized=time_normalized,
+                                                     inputformula = formula,
+                                                     #intercept=intercept,
                                                      compute.mu=compute.mu,
                                                      inla.options=inla.options,
                                                      memory.true=memory.true))
@@ -222,20 +226,20 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
     cat("Collecting results and perform transformation to user scaling..\n",sep="")
   }
   time.start.gather = Sys.time()
-  object = resultgather(object,print.progress=print.progress)
+  object = resultgather(object, nsims=nsims,print.progress=print.progress)
   time.gather = difftime(Sys.time(), time.start.gather,units="secs")[[1]]
   
   if(print.progress){
     cat("Results collected in ", format(time.gather,digits=3),"..\n",sep="")
   }
   
-  if(compute.mu >0){
-    #intercept = object$results$fixed
-    if(compute.mu==2) object=forcingmaker(object,quick=FALSE,intercept=intercept,
-                                          print.progress=print.progress)
-    if(compute.mu==1) object=forcingmaker(object,quick=TRUE,intercept=intercept,
-                                          print.progress=print.progress)
-  }
+  # if(compute.mu >0){
+  #   #intercept = object$results$fixed
+  #   if(compute.mu==2) object=forcingmaker(object,quick=FALSE,intercept=intercept,
+  #                                         print.progress=print.progress)
+  #   if(compute.mu==1) object=forcingmaker(object,quick=TRUE,intercept=intercept,
+  #                                         print.progress=print.progress)
+  # }
   
   time.total = difftime(Sys.time(), time.start,units="secs")[[1]]
   

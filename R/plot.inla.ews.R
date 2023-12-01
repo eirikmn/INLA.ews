@@ -29,7 +29,7 @@
 #' @seealso \code{\link{inla.ews}}
 #' @keywords inla.ews plot
 #' @importFrom ggplot2 ggplot xlab ylab geom_line theme_bw geom_ribbon aes ylim 
-#' geom_point labs
+#' geom_point labs ggtitle geom_segment
 #' @importFrom graphics abline par
 #' @importFrom rlang .data
 #' @importFrom grDevices dev.cur dev.new dev.off
@@ -65,13 +65,20 @@ plot.inla.ews <- function(x,
     if(plot.options$plot.hyper){
       for(i in 1:length(x$results$marginals)){
         figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
-        par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
-        name = names(x$results$marginals)[i]
-        plot(x$results$marginals[[name]],type="l",ylab="Density",xlab=name,
-             main="Posterior distribution")
-        abline(v=x$results$summary[[name]]$mean)
-        abline(v=c(x$results$summary[[name]]$quant0.025,x$results$summary[[name]]$quant0.975),col="red")
+        LOW = x$results$summary[[i]]$quant0.025
+        UPP = x$results$summary[[i]]$quant0.975
+        intx = x$results$marginals[[i]]$x[ x$results$marginals[[i]]$x < UPP & x$results$marginals[[i]]$x > LOW]
+        inty = x$results$marginals[[i]]$y[ x$results$marginals[[i]]$x < UPP & x$results$marginals[[i]]$x > LOW]
+        ggp = ggplot()  + theme_bw() +
+          xlab(names(x$results$marginal)[i]) + ylab("Density") + 
+          ggtitle(paste0("Posterior distribution: ",names(x$results$marginals)[i])) +
+          geom_ribbon(data=data.frame(intx=intx,inty=inty,lower=numeric(length(intx))),
+                      mapping=aes(x=.data$intx,ymin=.data$lower,ymax=.data$inty), color="red",fill="red",alpha=0.3,linewidth=0) +
+          geom_segment(aes(x=LOW,xend=LOW,y=0,yend=inty[1]),col="red",linewidth=1.) +
+          geom_segment(aes(x=UPP,xend=UPP,y=0,yend=inty[length(inty)]),col="red",linewidth=1.) +
+          geom_line(data=x$results$marginals[[i]],mapping=aes(x=.data$x,y=.data$y), linewidth=1.2)
         
+        print(ggp)
         if(postscript || pdf){
           if (names(dev.cur()) != "null device") {
             dev.off()
@@ -83,8 +90,19 @@ plot.inla.ews <- function(x,
   }
 
   
-  if(plot.options$plot.forced && !is.null(x$forced)){
+  if(plot.options$plot.forced && !is.null(x$results$summary$alltrend)){
     figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
+    
+    ggd = data.frame(y=x$.args$inladata$y, time=x$.args$timesteps, mean=x$results$summary$alltrend$mean, 
+                     lower=x$results$summary$alltrend$quant0.025, upper=x$results$summary$alltrend$quant0.975)
+    
+    ggp = ggplot(ggd, aes(x=.data$time)) + geom_line(aes(y=.data$y),col="gray") + theme_bw() +
+      geom_ribbon(aes(ymin=.data$lower, ymax=.data$upper),col="red",fill="red",alpha=0.3,linewidth=1.2) +
+      geom_line(aes(y=.data$mean),col="blue",linewidth=1.2)
+    #
+    ## EMN: KOMT HIT
+    #
+    
     par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
     ggd = data.frame(y=x$.args$data,time=x$.args$inladata$time,
                      mean=x$forced$mean)

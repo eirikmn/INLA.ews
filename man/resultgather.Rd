@@ -5,11 +5,14 @@
 \title{Gather results from INLA fit
 This function gathers and formats results from INLA fit.}
 \usage{
-resultgather(object, print.progress)
+resultgather(object, nsims = 10000, print.progress)
 }
 \arguments{
 \item{object}{S3 object of type \code{inla.ews} which includes result from 
 \code{inla}-program.}
+
+\item{nsims}{Integer stating the number of simulations used in Monte Carlo estimation of parameters
+not obtained directly from INLA. Default 10000.}
 
 \item{print.progress}{boolean indicating if progress should be printed to screen.}
 }
