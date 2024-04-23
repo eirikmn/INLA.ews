@@ -6,7 +6,6 @@
 #'
 #' @param cmd Vector containing list of function names necessary for the rgeneric model.
 #' @param theta Vector describing the hyperparameters in internal scaling.
-#'
 #' @importFrom stats dnorm
 rgeneric.ar1 = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
@@ -31,13 +30,13 @@ rgeneric.ar1 = function(
     
     lambdas = -log(a+b*timee)
     kappa2s = kappa_eps*2*lambdas
-    
+    cat("a: ",a,"b: ",b,"sigma: ",1/sqrt(kappa_eps),"\n",sep="")
     cc = 1/(nn-1)
     phis = c(exp(-lambdas*c(1,diff(timee)/cc)) ) #rescale
     
     #kappa_f = exp(theta[4])
     #F0 = theta[5]
-    
+    print(theta)
     return(list(phis = phis, kappa_eps = kappa_eps, a=a,b=b,#kappa_f=kappa_f,F0=F0
                 lambdas=lambdas, kappa2s=kappa2s, sigma2s=1/kappa2s))
   }
@@ -64,6 +63,7 @@ rgeneric.ar1 = function(
       nn=get("n",envir)
       timee=get("time",envir)
     }
+    
     params = interpret.theta()
     phis = params$phis
     kappa_eps = params$kappa_eps
@@ -71,23 +71,39 @@ rgeneric.ar1 = function(
     kappa2s = params$kappa2s
     ii=c(1,nn,2:(nn-1),1:(nn-1))
     jj=c(1,nn,2:(nn-1),2:nn)
+    print("Q")
+    cat("range: ", range(kappa2s),"\n")
+    cat("range: ", range(phis),"\n")
+    
     #xx = kappa_eps*c(1+phis[2]^2,1,1+phis[3:nn]^2,-phis[2:nn])
     xx = c(kappa2s[1]*(1-phis[1]^2)+kappa2s[2]*phis[2]^2, kappa2s[nn],
            kappa2s[2:(nn-1)]+kappa2s[3:nn]*phis[3:nn]^2,
            -phis[2:nn]*kappa2s[2:nn])
     
+    cat("range x: ", range(xx),"\n")
     Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
     return (Q)
   }
   log.norm.const = function(){return(numeric(0))}
   log.prior = function(){
-    params = interpret.theta()
-    lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
-    #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
-    b=params$b; ra = 0; rb=1
-    lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
-    #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
-    lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
+    if(!is.null(envir)){
+      if(!is.null(envir[["my.log.prior"]])){
+        my.prior=get("my.log.prior",envir)
+      }else{
+        my.prior=NULL
+      }
+    }else{
+      my.prior=NULL
+    }
+    if(!is.null(my.prior)){
+      lprior = my.prior(theta)
+    }else{
+      params = interpret.theta()
+      lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+      lprior = lprior + dnorm(theta[2],sd=1,log=TRUE)
+      lprior = lprior + dnorm(theta[3],sd=1,log=TRUE) #theta_a
+      
+    }
     
     return (lprior)
   }
@@ -107,8 +123,6 @@ rgeneric.ar1 = function(
 
 
 
-
-
 #' rgeneric forcing model for AR(1) time-dependent process
 #'
 #' Defines the rgeneric model structure for the AR(1) model with time-dependent
@@ -120,12 +134,16 @@ rgeneric.ar1 = function(
 #'
 #'
 #' @importFrom stats dnorm
+#' @importFrom Rcpp sourceCpp
+#' @useDynLib INLA.ews, .registration = TRUE
 rgeneric.ar1.forcing = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
 {
+  require(INLA.ews, quietly=TRUE)
+  #print(c_mu_ar1)
   tau = exp(15)
-  envir = environment(sys.call()[[1]])
+  envir = parent.env(environment())
   
   interpret.theta = function() {
     if(!is.null(envir)){
@@ -161,7 +179,10 @@ rgeneric.ar1.forcing = function(
       nn=get("n",envir)
       timee=get("time",envir)
       fforcing=get("forcing",envir)
+      
     }
+    require("INLA.ews",quietly=TRUE)
+    #print("mu")
     hyperparam = interpret.theta()
     #print(hyperparam)
     
@@ -175,25 +196,71 @@ rgeneric.ar1.forcing = function(
     #solution 1:
     llambdas = hyperparam$lambdas
     
-    #solution 2:
-    #innerstruct = 0.5+seq(0,nn-1,length.out=nn)
-    pp = hyperparam$phis
-    #llambdas = pp-1
-    
-    
-    ##
+    #soluti
     
     struktur = exp(-hyperparam$lambdas*innerstruct)
     
     muvek = numeric(nn)
     
-    for(i in 1:nn){
-      muvek[i] = rev(struktur[1:i])%*%zz[1:i]
+    
+    
+    if(diff(range(diff(timee)))<10^(-12)){
+      #print("regular")
+      for(i in 1:nn){
+        muvek[i] = rev(struktur[1:i])%*%zz[1:i]
+      }
+    }else{
+      if(TRUE){
+        #print("irregular")
+        for(k in 1:nn){
+          for(s in 1:k){
+            muvek[k] = muvek[k] + zz[s]*exp(-llambdas[k]*(timee[k]-timee[s]))
+          }
+        }
+      }else{
+        
+        
+        c_mu_ar1(muvek,zz, nn,llambdas,timee)
+        #cfunk(muvek,zz, nn,llambdas,timee)
+        #if(!is.loaded('Rc_mu_ar1')){
+          #dyn.load(file.path(.Library,"INLA.climate/libs/Rc_Q.so"))
+        #  dyn.load(file.path("INLA.ews.so"))
+        #}
+        #res = .C('c_mu_ar1',mu=as.matrix(muvek,ncol=1),
+        #         as.double(zz),as.integer(nn),
+        #         as.double(llambdas),
+        #         as.double(timee))
+        #print(res$mu[1:3])
+        #muvek=res$mu
+        
+        #.Call('_INLA_ews_c_mu_ar1', PACKAGE = 'INLA.ews', 
+        #      muvek, zz, nn, llambdas, timee)
+        #cfunk(muvek,z=zz, n=nn,lambda=llambdas,time=timee)
+        #if(!is.loaded('Rc_mu_ar1')){
+          #dyn.load(file.path(.Library,"INLA.climate/libs/Rc_Q.so"))
+        #  dyn.load(file.path("Rc_mu_ar1.so"))
+        #  cat("dyn.load\n")
+        #}
+        #res = .C('Rc_mu_ar1',mu=as.matrix(means,ncol=1),as.double(fforcing),as.integer(nn),as.integer(NN),
+        #         as.double(weights),as.double(llambdas),as.double(sf),
+        #         as.double(hyperparam$F0))
+        
+        #Cres = .C('Rc_mu_ar1',mu=as.matrix(numeric(nn),ncol=1),as.double(zz),as.integer(nn),
+        #         as.double(llambdas), as.double(timee)) #new
+        #cat("done C\n")
+        #cat("res: ", Cres$mu,"\n")
+        #muvek=Cres$mu 
+      }
+      
     }
+    
+
+    
     
     return(muvek)
     
   }
+  
   
   graph = function() {
     if(!is.null(envir)){
@@ -229,16 +296,22 @@ rgeneric.ar1.forcing = function(
   }
   log.norm.const = function(){return(numeric(0))}
   log.prior = function(){
-    params = interpret.theta()
-    lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
-    #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
-    b=params$b; ra = 0; rb=1
-    lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
-    #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
-    lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
-    lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa_f
-    lprior = lprior + dnorm(theta[5],sd=3,log=TRUE) #F0
-    
+    if(!is.null(envir)){
+      my.prior=get("my.log.prior",envir)
+    }
+    if(!is.null(my.prior)){
+      lprior = my.prior(theta)
+    }else{
+      params = interpret.theta()
+      lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+      #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
+      b=params$b; ra = 0; rb=1
+      lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
+      #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
+      lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
+      lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa_f
+      lprior = lprior + dnorm(theta[5],sd=3,log=TRUE) #F0
+    }
     return (lprior)
   }
   initial = function(){

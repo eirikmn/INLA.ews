@@ -11,9 +11,11 @@ inla.ews(
   model = "ar1",
   compute.mu = 0,
   timesteps = NULL,
+  log.prior = NULL,
   stepsize = 0.005,
   num.threads = 1,
   nsims = 10000,
+  do.cgeneric = FALSE,
   inla.options = NULL,
   print.progress = FALSE,
   memory.true = NULL
@@ -28,13 +30,19 @@ is included, set to \code{numeric(0)} (default).}
 \item{formula}{Formula describing the linear predictor (NOT YET IMPLEMENTED)}
 
 \item{model}{Character string describing which noise model should be used.
-Currently supports \code{"ar1"} (default) and \code{"fgn"}.}
+Currently only supports \code{"ar1"} (default).}
 
 \item{compute.mu}{Should the forced response be computed? Set to \code{0} if not, 
 \code{1} if only mean and standard deviation should be computed or \code{2} if quantiles
 should be computed (this is slower).}
 
 \item{timesteps}{Numeric vector describing time steps of input variables (if steps are not equidistant).}
+
+\item{log.prior}{Function expressing the logarithm of the joint prior for the 
+hyperparameters in internal scaling, see examples for a demonstration. If set to 
+\code{NULL}, default values will be selected. These are standard Normal distributions 
+for \code{a} and \code{b} in internal scaling, and a penalised complexity prior with \code{u=1} 
+and \code{alpha=0.01} for \code{kappa=1/sigma^2}.}
 
 \item{stepsize}{Numeric stating the step size used in the optimization procedure in 
 the INLA program. If convergence cannot be achieved, then changing this will sometimes help. If 
@@ -47,6 +55,11 @@ which is the default value here. Increasing this might improve runtime.}
 
 \item{nsims}{Integer stating the number of simulations used in Monte Carlo estimation of parameters
 not obtained directly from INLA. Default 10000.}
+
+\item{do.cgeneric}{Boolean stating whether or not the model should be specified using
+\code{cgeneric} rather than \code{rgeneric} in cases where this has been implemented. 
+Gives improved speed, but bugs are more likely. PC priors are not implemented 
+for this model, and any adjustments to the source code will be more difficult.}
 
 \item{inla.options}{List giving options (such as step length and the number of threads to be used),
 to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.}
@@ -65,46 +78,32 @@ Fits a Bayesian hierarchical model with time-dependent correlation using INLA.
 }
 \examples{
 \donttest{
-### AR(1) simulation example ###
 set.seed(123)
 n = 1000
 sigma = 1
-a=0.6
-b=-0.0
-F0 = 3
-sigmaf = 0.3
+a=0.3
+b=0.5
 time = 1:n
-phis = a+b*1:n/n
-noise=ar1_timedep_sim(n,sigma=sigma,a=a,b=b)
+phis = a+b*seq(0,1,length.out=n)
+data=ar1_timedep_sim(n,sigma=sigma,a=a,b=b)
 
-forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n
-zz = sigmaf*(F0+forcing)
 
-lambdas = phis-1
-muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
-
-data = noise #+ muvek
-
-object = inla.ews(data,forcing,model="ar1",compute.mu=FALSE, print.progress=TRUE,
+object = inla.ews(data,model="ar1", print.progress=TRUE,
                     memory.true=phis)
 summary(object)
 plot(object)
 
+## customize prior ##
+my.log.prior = function(theta){ #numeric of length 3 (log(kappa), theta_b, theta_a)
+  lprior = dnorm(theta[1], sd=1, log=TRUE) + 
+           dnorm(theta[2], sd=1, log=TRUE) + 
+           dnorm(theta[3], sd=1, log=TRUE)
+  return (lprior)
+}
+object2 = inla.ews(data, log.prior=my.log.prior,model="ar1",compute.mu=FALSE, print.progress=TRUE,
+                    memory.true=phis)
 
-### fGn simulation example ###
-set.seed(123)
-n=80
-sigma = 1.2
-time=seq(0,1,length.out=n)
-a = 0.6
-b = 0.25
-Hs = a+b*time
-
-data = fgn_timedep_sim(n,a=a,b=b)
-
-object = inla.ews(data,model="fgn",memory.true=Hs)
-summary(object)
-plot(object)
+summary(object2)
 }
 }
 \author{

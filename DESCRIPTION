@@ -15,8 +15,10 @@ Imports:
     Matrix,
     rlang,
     matrixStats,
-    ggplot2
+    ggplot2,
+    Rcpp
 Suggests: graphics, INLA, knitr, rmarkdown, testthat
 Encoding: UTF-8
 RoxygenNote: 7.2.3
 LazyData: true
+LinkingTo: Rcpp

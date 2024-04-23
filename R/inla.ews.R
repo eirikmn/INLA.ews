@@ -6,11 +6,16 @@
 #' is included, set to \code{numeric(0)} (default).
 #' @param formula Formula describing the linear predictor (NOT YET IMPLEMENTED)
 #' @param model Character string describing which noise model should be used.
-#' Currently supports \code{"ar1"} (default) and \code{"fgn"}.
+#' Currently only supports \code{"ar1"} (default).
 #' @param compute.mu Should the forced response be computed? Set to \code{0} if not, 
 #' \code{1} if only mean and standard deviation should be computed or \code{2} if quantiles
 #' should be computed (this is slower).
 #' @param timesteps Numeric vector describing time steps of input variables (if steps are not equidistant).
+#' @param log.prior Function expressing the logarithm of the joint prior for the 
+#' hyperparameters in internal scaling, see examples for a demonstration. If set to 
+#' \code{NULL}, default values will be selected. These are standard Normal distributions 
+#' for \code{a} and \code{b} in internal scaling, and a penalised complexity prior with \code{u=1} 
+#' and \code{alpha=0.01} for \code{kappa=1/sigma^2}. 
 #' @param stepsize Numeric stating the step size used in the optimization procedure in 
 #' the INLA program. If convergence cannot be achieved, then changing this will sometimes help. If 
 #' an array of length>=2 is given, INLA will rerun, starting at the previous optima, with given stepsizes. 
@@ -20,6 +25,10 @@
 #' which is the default value here. Increasing this might improve runtime. 
 #' @param nsims Integer stating the number of simulations used in Monte Carlo estimation of parameters
 #' not obtained directly from INLA. Default 10000. 
+#' @param do.cgeneric Boolean stating whether or not the model should be specified using
+#' \code{cgeneric} rather than \code{rgeneric} in cases where this has been implemented. 
+#' Gives improved speed, but bugs are more likely. PC priors are not implemented 
+#' for this model, and any adjustments to the source code will be more difficult.
 #' @param inla.options List giving options (such as step length and the number of threads to be used),
 #' to the \code{inla}-program. Any absent options are set to the default \code{INLA} options.
 #' @param print.progress boolean indicating whether or not progress should be printed to screen.
@@ -30,53 +39,40 @@
 #' 
 #' @examples
 #' \donttest{
-#' ### AR(1) simulation example ###
 #' set.seed(123)
 #' n = 1000
 #' sigma = 1
-#' a=0.6
-#' b=-0.0
-#' F0 = 3
-#' sigmaf = 0.3
+#' a=0.3
+#' b=0.5
 #' time = 1:n
-#' phis = a+b*1:n/n
-#' noise=ar1_timedep_sim(n,sigma=sigma,a=a,b=b)
+#' phis = a+b*seq(0,1,length.out=n)
+#' data=ar1_timedep_sim(n,sigma=sigma,a=a,b=b)
 #' 
-#' forcing = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n
-#' zz = sigmaf*(F0+forcing)
 #' 
-#' lambdas = phis-1
-#' muvek = mu.computer(forcing,sigmaf,F0,memory=phis,model="ar1")
-#' 
-#' data = noise #+ muvek
-#' 
-#' object = inla.ews(data,forcing,model="ar1",compute.mu=FALSE, print.progress=TRUE,
+#' object = inla.ews(data,model="ar1", print.progress=TRUE,
 #'                     memory.true=phis)
 #' summary(object)
 #' plot(object)
 #' 
+#' ## customize prior ##
+#' my.log.prior = function(theta){ #numeric of length 3 (log(kappa), theta_b, theta_a)
+#'   lprior = dnorm(theta[1], sd=1, log=TRUE) + 
+#'            dnorm(theta[2], sd=1, log=TRUE) + 
+#'            dnorm(theta[3], sd=1, log=TRUE)
+#'   return (lprior)
+#' }
+#' object2 = inla.ews(data, log.prior=my.log.prior,model="ar1",compute.mu=FALSE, print.progress=TRUE,
+#'                     memory.true=phis)
 #' 
-#' ### fGn simulation example ###
-#' set.seed(123)
-#' n=80
-#' sigma = 1.2
-#' time=seq(0,1,length.out=n)
-#' a = 0.6
-#' b = 0.25
-#' Hs = a+b*time
-#' 
-#' data = fgn_timedep_sim(n,a=a,b=b)
-#' 
-#' object = inla.ews(data,model="fgn",memory.true=Hs)
-#' summary(object)
-#' plot(object)
+#' summary(object2)
 #' }
 #' @author Eirik Myrvoll-Nilsen, \email{eirikmn91@gmail.com}
 #' @keywords INLA early warning signal
 #' @export
 #' @importFrom stats as.formula
 inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute.mu=0,
-                     timesteps=NULL, stepsize=0.005,num.threads=1, nsims=10000,
+                     timesteps=NULL, log.prior=NULL, stepsize=0.005,num.threads=1, nsims=10000,
+                     do.cgeneric=FALSE,
                      inla.options=NULL,print.progress=FALSE,
                      memory.true=NULL){
 
@@ -115,7 +111,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
     time=timesteps
   }else{
     timesteps=1:n
-    time=1:n
+    time=timesteps
   }
   
   #time_normalized = time-time[1]; time_normalized=time_normalized/time_normalized[n]
@@ -141,12 +137,38 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   }
   if(tolower(model) %in% c("ar1","ar(1)","1")){
     if(length(forcing)>0){
+      require(INLA.ews, quietly=TRUE)
       
-      rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1.forcing,n=n,
-                                              time=time_normalized,forcing=forcing)
+      if(!do.cgeneric){
+        rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1.forcing,n=n,
+                                                time=time_normalized,
+                                                my.log.prior=log.prior,
+                                                forcing=forcing
+        )
+      }else{
+        cscript.path=c()
+        for(i in 1:length(.libPaths())){
+          if("INLA.ews" %in% list.files(.libPaths()[i])){
+            cscript.path=paste0(.libPaths()[i],"/INLA.ews/libs/INLA.ews.so")
+          }
+        }
+        if(length(cscript.path)==0){
+          stop("Could not find package directory, please make sure that INLA.climate is installed within one of the libraries displayed by '.libPaths()'.")
+        }
+        rgen_model <- INLA::inla.cgeneric.define(model = "inla_cgeneric_timedep_forcing",
+                                             #shlib = "src/cgeneric.so", 
+                                             #shlib = "libs/INLA.ews.so", 
+                                             shlib = cscript.path, 
+                                             n = n, debug=FALSE,
+                                             time=as.numeric(time_normalized), 
+                                             forcing=as.numeric(forcing)
+        )
+      }
+      
     }else{
       rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1,n=n,
-                                              time=time_normalized)
+                                              time=time_normalized,
+                                              my.log.prior=log.prior)
     }
   }
   
@@ -184,7 +206,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       cat("Initiating inla program..\n",sep="")
       
     }else if(print.progress && nstepsizes>=1){
-      cat("Initiating inla program. Iteration ",i," of ",nstepsizes,".\n",sep="")
+      cat("Initiating inla program. Iteration ",i," of ",nstepsizes,": stepsize = ",stepsize[i],".\n",sep="")
       if(i >= 2){
         #inla.options$control.mode$theta = r$summary.hyperpar$mode
         inla.options$control.mode$result = r #use previous theta and x-mode
@@ -230,7 +252,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   time.gather = difftime(Sys.time(), time.start.gather,units="secs")[[1]]
   
   if(print.progress){
-    cat("Results collected in ", format(time.gather,digits=3),"..\n",sep="")
+    cat("Results collected in ", format(time.gather,digits=3)," seconds..\n",sep="")
   }
   
   # if(compute.mu >0){

@@ -40,7 +40,7 @@ summary.inla.ews = function(object,digits=4L,...){
   out = c(out, list(cpu=cpu))
   
   fixednames = rownames(object$inlafit$summary.fixed)
-  if(!is.null(fixednames)){
+  if(length(fixednames)>0){
     interceptmat = round(object$inlafit$summary.fixed[,1:5],digits=digits)
   }else{
     interceptmat = NULL
@@ -84,8 +84,8 @@ summary.inla.ews = function(object,digits=4L,...){
   if(is.forcing){
     nextrahyps = nextrahyps - 2
   }
-  if(nextrahyps>=1){
-    extrahypers = round(object$inlafit$summary.hyperpar[1:nextrahyps,1:5], digits=digits)
+  if(nextrahyps>1){
+    extrahypers = round(object$inlafit$summary.hyperpar[1:(nextrahyps-1),1:5], digits=digits)
   }else{
     extrahypers = NULL
   }
@@ -212,7 +212,7 @@ print.summary.inla.ews = function(x,digits=4L,...){
   }
   
   
-  cat("\nProbability of positive trend is ",x$b_positive,"\n",sep="")
+  cat("\nProbability of positive slope 'b' is ",x$b_positive,"\n",sep="")
   if(!is.null(x$dic)){
     cat(paste0("Deviance Information Criterion (DIC) ...: ",
                format(x$dic$dic, digits=digits, nsmall=2), "\n",

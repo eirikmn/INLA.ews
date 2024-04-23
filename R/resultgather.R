@@ -22,7 +22,7 @@ resultgather <- function(object,nsims=10000,print.progress){
   time=object$.args$time_normalized
   time_normalized=object$.args$time_normalized
   
-  nrand = length(r$summary.random)-1
+  #nrand = length(r$summary.random)-1
   if(length(object$.args$forcing)>0){
     nextrahyps = length(r$summary.hyperpar$mean)-5
   }else{
@@ -141,7 +141,7 @@ resultgather <- function(object,nsims=10000,print.progress){
     cat("Sampling fixed and random effects...",sep="")
   }
   # compute trends
-  alltrendsamps = matrix(0,nrow=n,ncol=nsims)
+  
   
   trendmean=numeric(n)
   trendupper=numeric(n)
@@ -160,7 +160,12 @@ resultgather <- function(object,nsims=10000,print.progress){
     }
     for(i in 1:nsims){
       latents = postsamps[[i]]$latent
-      fixsamps[,i] = latents[n*(nrand+1)+1:nfix]
+      ndpred = length(object$inlafit$summary.linear.predictor$mean)
+      ndrand = 0
+      for(ss in 1:length(object$inlafit$summary.random)){
+        ndrand = ndrand + length(object$inlafit$summary.random[[ss]]$mean)
+      }
+      fixsamps[,i] = latents[ndpred+ndrand+1:nfix]
       trendsamps[,i] = numeric(n)
       for(k in 1:nfix){
         if(fixnames[k] == "(Intercept)"){
@@ -190,27 +195,31 @@ resultgather <- function(object,nsims=10000,print.progress){
     cat(" completed!\n",sep="")
   }
   
-  if(print.progress){
-    cat("Simulating forcing response...",sep="")
-  }
   
-  Fmean = numeric(n)
-  Flower = numeric(n)
-  Fupper = numeric(n)
-  muveksamps = matrix(0,nrow=n,ncol=nsims)
+  
+  
   if(length(object$.args$forcing)>0){
-    
+    if(print.progress){
+      cat("Simulating forcing response...",sep="")
+    }
+    Fmean = numeric(n)
+    Flower = numeric(n)
+    Fupper = numeric(n)
+    muveksamps = matrix(0,nrow=n,ncol=nsims)
     sfsamp = 1/sqrt(exp(hypersamples[,4+nextrahyps]))
     F0samp = hypersamples[,5+nextrahyps]
     for(s in 1:nsims){
       
-      zz = (object$.args$forcing+F0samp[i])*sfsamp[i]
+      muveksamps[,s] = mucomputer(pars=c(0,b_sims[s],a_sims[s],sfsamp[s], F0samp[s]),
+                                  forcing = object$.args$forcing,
+                                  time_norm = time_normalized, as.theta=FALSE)
+      #zz = (object$.args$forcing+F0samp[i])*sfsamp[i]
       
-      struktur = exp(-lambda_sims[s]*time_normalized)
+      #struktur = exp(-lambda_sims[s]*time_normalized)
       
-      for(i in 1:n){
-        muveksamps[i,s] = rev(struktur[1:i])%*%zz[1:i]
-      }
+      #for(i in 1:n){
+      #  muveksamps[i,s] = rev(struktur[1:i])%*%zz[1:i]
+      #}
     }
     for(i in 1:n){
       dens0 = density(muveksamps[i,]); dens=data.frame(x=dens0$x,y=dens0$y)
@@ -219,21 +228,26 @@ resultgather <- function(object,nsims=10000,print.progress){
       Flower[i] = zm$quant0.025
       Fupper[i] = zm$quant0.975
     }
+    alltrendsamps = trendsamps + muveksamps
+    alltrendmean = numeric(n)
+    alltrendupper = numeric(n)
+    alltrendlower = numeric(n)
+    if(sd(alltrendsamps)>0){
+      for(i in 1:n){
+        dens0 = density(alltrendsamps[i,]); dens=data.frame(x=dens0$x,y=dens0$y)
+        zm = INLA::inla.zmarginal(dens,silent=TRUE)
+        alltrendmean[i] = zm$mean
+        alltrendlower[i] = zm$quant0.025
+        alltrendupper[i] = zm$quant0.975
+      }
+    }
+  }else{
+    alltrendmean=trendmean
+    alltrendupper=trendupper
+    alltrendlower=trendlower
   }
   
-  alltrendsamps = trendsamps + muveksamps
-  alltrendmean = numeric(n)
-  alltrendupper = numeric(n)
-  alltrendlower = numeric(n)
-  if(sd(alltrendsamps)>0){
-    for(i in 1:n){
-      dens0 = density(alltrendsamps[i,]); dens=data.frame(x=dens0$x,y=dens0$y)
-      zm = INLA::inla.zmarginal(dens,silent=TRUE)
-      alltrendmean[i] = zm$mean
-      alltrendlower[i] = zm$quant0.025
-      alltrendupper[i] = zm$quant0.975
-    }
-  }
+  
   
   
   
