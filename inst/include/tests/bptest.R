@@ -34,7 +34,7 @@ if(FALSE){
       }else if(nbefore >=nn){
         timecov = numeric(nn)
       }else{
-        timecov = timee-timee[nbefore]
+        timecov = (timee-timee[nbefore])/(1-timee[nbefore])
         timecov[1:nbefore]=0
       }
       cat("nbefore",nbefore,"\n")
@@ -57,10 +57,6 @@ if(FALSE){
       #phis = c(exp(-lambdas*c(1,diff(timee)/cc)) ) #rescale
       phis = a+b*timecov #does not account for non-constant time steps!!!
         
-      cat("a:",a,"b:",b,"lambdas:",range(lambdas),"\n")
-      cat("-loga",-log(a),"-log a+b*timecov",-log(a+b*timecov[nn]))
-      cat("range:",range(kappa2s))
-      cat("range:",range(phis))
       #kappa_f = exp(theta[4])
       #F0 = theta[5]
       print(theta)
@@ -115,10 +111,14 @@ if(FALSE){
     log.prior = function(){
       
         params = interpret.theta()
-        lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
-        lprior = lprior + dnorm(theta[2],sd=1,log=TRUE)
-        lprior = lprior + dnorm(theta[3],sd=1,log=TRUE) #theta_a
-        lprior = lprior + dnorm(theta[4],mean=2,sd=1,log=TRUE) #bp
+        #lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+        # lprior = dnorm(theta[1],sd=10,log=TRUE)
+        # lprior = lprior + dnorm(theta[2],sd=10,log=TRUE)
+        # lprior = lprior + dnorm(theta[3],sd=10,log=TRUE) #theta_a
+        lprior = dgamma(exp(theta[1]), shape=1, rate=0.1) + theta[1]
+        lprior = lprior -theta[2] -2*log(1+exp(theta[2]))
+        lprior = lprior -theta[3] -2*log(1+exp(-theta[3])) 
+        lprior = lprior + dnorm(theta[4],sd=10,log=TRUE) #bp
         #lprior = lprior + dnorm(theta[4],mean=0.5,sd=0.1, log=TRUE)
       
       return (lprior)
@@ -140,29 +140,33 @@ if(FALSE){
   n = 1000
   sigma = 1
   a=0.2
-  b=0.5
-  bp = 0.25
+  b=0.6
+  bp = 0.50
   nbefore = floor(n*bp)
   nafter=n-nbefore
   time=1:n
   time_norm = seq(0,1,length.out=n)
-  nbefore = floor(bp*nn) +1
-  nafter = nn-nbefore
+  nbefore = floor(bp*n) +1
+  nafter = n-nbefore
   if(nbefore <= 1){
-    timecov = timee
-  }else if(nbefore >=nn){
-    timecov = numeric(nn)
+    timecov = time_norm
+  }else if(nbefore >=n){
+    timecov = numeric(n)
   }else{
-    timecov = timee-timee[nbefore]
+    timecov = (time_norm-time_norm[nbefore])/(1-time_norm[nbefore])
     timecov[1:nbefore]=0
   }
   phis = a+b*timecov
+  lambdas = -log(phis)
   
   data=ar1_timedep_sim(n,sigma=sigma,phis=phis)
+  
+  
   plot(data)  
   lines(phis*max(data),col="red",lwd=4)
   df = data.frame(y=data, idy=1:n)
   
+  library(INLA)
   rgen_model = inla.rgeneric.define(rgeneric.ar1.bp,n=n,time=time_norm)
   formula = y~-1+f(idy,model=rgen_model)
   r = inla(formula,data=df,control.family = list(initial=12,fixed=TRUE))
@@ -183,8 +187,8 @@ if(FALSE){
   bp_est = inla.emarginal(function(x)1/(1+exp(-x)), r$marginals.hyperpar$`Theta4 for idy`)
   
   nsims = 10000
-  hypersamples = INLA::inla.hyperpar.sample(nsims,r)
-
+  hypersamples = INLA::inla.hyperpar.sample(nsims,r, improve.marginals=TRUE)
+  
   b_sims = -1/rekke+2/rekke*1/(1+exp(-hypersamples[,2]))
   #b = -1/r+2/r*1/(1+exp(-theta[2]))
   a_sims = numeric(nsims)
@@ -197,26 +201,26 @@ if(FALSE){
   for(i in 1:nsims){
     bps = bp_sims[i]
     nbefore = floor(bps*n) +1
-    nafter = nn-nbefore
+    nafter = n-nbefore
     if(nbefore <= 1){
-      timecov = time_norm
+      timecovv = time_norm
     }else if(nbefore >=n){
-      timecov = numeric(n)
+      timecovv = numeric(n)
     }else{
-      timecov = time_norm-time_norm[nbefore]
-      timecov[1:nbefore]=0
+      timecovv = (time_norm-time_norm[nbefore])/(1-time_norm[nbefore])
+      timecovv[1:nbefore]=0
     }
     
     low=min(b_sims[i]*time_norm[1],b_sims[i]*time_norm[n])
     high=max(b_sims[i]*time_norm[1],b_sims[i]*time_norm[n])
     a_sims[i] = -low + (1-high+low)/(1+exp(-hypersamples[i,3]))
     
-    lambda_sims[,i] = -log(a_sims[i]+b_sims[i]*timecov)
+    lambda_sims[,i] = -log(a_sims[i]+b_sims[i]*timecovv)
     #phi_sims[,i] = a_sims[i]+b_sims[i]*df$time_normalized
     cc = 1/(length(time_norm-1))
     
-    phi_sims[,i] = exp(-lambda_sims[,i]*c(0,diff(timecov))/cc)
-    phi0_sims[,i] = a_sims[i]+b_sims[i]*timecov
+    phi_sims[,i] = exp(-lambda_sims[,i]*c(0,diff(timecovv))/cc)
+    phi0_sims[,i] = a_sims[i]+b_sims[i]*timecovv
     
     
   }
@@ -281,7 +285,7 @@ if(FALSE){
 
   library(ggplot2)
   
-  lambdas = -log(a+b*timecov)
+  
   stds = sqrt(sigma^2/lambdas)
   
   ggd = data.frame(time=time_norm, phis=phis, phimean = phi_means, philower=phi_lower, 
@@ -299,10 +303,22 @@ if(FALSE){
     ylim(c(0,1)) +
     ggtitle("(b) Memory evolution", subtitle=paste0("Breakpoint at t = ",bp))
   ggp
-  
+  # 
+  # bp_zmarg = inla.zmarginal(bp_marg, silent=TRUE)
+  # mmmm = c(b_est, a_zmarg$mean, bp_est)
+  # llll=c(b_zmarg$quant0.025, a_zmarg$quant0.025, )
+  # mmm=b_est
+  # lll=b_zmarg$quant0.025
+  # uuu=b_zmarg$quant0.975
+  # ttt = b
+  # cat(mmm, "(",lll,", ",uuu,")", " [",ttt,"]",sep="")
+  # 
+  # cat("b = ",b_est, "(",b,"), a = ",a_est,"(",a )
+  # 
   library(ggpubr)
   ggboth = ggarrange(ggpy,ggp,nrow=1)
-  ggsave("breakpoint-plot-8x4.eps",plot=ggboth, device=cairo_ps, width=8,
+  ggboth
+  ggsave("breakpoint-plot-8x4-vague.eps",plot=ggboth, device=cairo_ps, width=8,
          height=4)
   
 }

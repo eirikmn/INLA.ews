@@ -39,10 +39,12 @@ should be computed (this is slower).}
 \item{timesteps}{Numeric vector describing time steps of input variables (if steps are not equidistant).}
 
 \item{log.prior}{Function expressing the logarithm of the joint prior for the 
-hyperparameters in internal scaling, see examples for a demonstration. If set to 
-\code{NULL}, default values will be selected. These are standard Normal distributions 
-for \code{a} and \code{b} in internal scaling, and a penalised complexity prior with \code{u=1} 
-and \code{alpha=0.01} for \code{kappa=1/sigma^2}.}
+hyperparameters in internal scaling. \code{theta[1]} corresponds to \code{log(kappa)}, 
+\code{theta[2]} corresponds to the numerically stable parameterization of \code{b} 
+and \code{theta[3]} corresponds to the parameterization of \code{a}. see examples 
+for a demonstration. If \code{log.prior=NULL}, default values will be selected. These are
+the gamma distribution on \code{kappa} with \code{shape=1} and rate=\code{0.01}, and uniform
+priors on \code{a} and \code{b}.}
 
 \item{stepsize}{Numeric stating the step size used in the optimization procedure in 
 the INLA program. If convergence cannot be achieved, then changing this will sometimes help. If 

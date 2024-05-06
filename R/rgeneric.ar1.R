@@ -297,7 +297,13 @@ rgeneric.ar1.forcing = function(
   log.norm.const = function(){return(numeric(0))}
   log.prior = function(){
     if(!is.null(envir)){
-      my.prior=get("my.log.prior",envir)
+      if(!is.null(envir[["my.log.prior"]])){
+        my.prior=get("my.log.prior",envir)
+      }else{
+        my.prior=NULL
+      }
+    }else{
+      my.prior=NULL
     }
     if(!is.null(my.prior)){
       lprior = my.prior(theta)

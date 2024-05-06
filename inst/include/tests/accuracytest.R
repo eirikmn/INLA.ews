@@ -70,28 +70,69 @@ if(FALSE){
     
   }
   
+  #temp = read.table("n500_bfits.txt")
+  nsims=1000
+  n=500
+  #bgrid = matrix(temp$b,ncol=nsims)
+  bgrid=seq(-0.8,0.8,by=0.1)
+  bests=t(matrix(temp$best,ncol=nsims))
+  bposs=t(matrix(temp$bpositive,ncol=nsims))
   
-  
-  
+  library(ggplot2)
+  library(litteR)
   ggd = data.frame(b = factor(rep(bgrid, each=nsims)), best = c(t(bests)), bpositive = c(t(bposs)))
   bmeanavg = rowMeans(bests)
-  #ggd$b = as.factor(ggd$b)
-  #write.table(ggd,"n500_bfits.txt")
-  #write.table(ggd,"sigma10_n500_bfits.txt")
-  #temp = read.table("n500_bfits.txt")
-  gg1 = ggplot(data=ggd) + theme_bw() + xlab("True b") + ylab("Posterior marginal mean b") +
-    geom_boxplot(aes(x=b,y=best)) +
+  
+  ggd1 = data.frame(b = factor(rep(seq(from=-0.8,to=0.8,by=0.1), each=nsims)), best = c(t(bests)), bpositive = c(t(bposs)))
+  bmeanavg = rowMeans(bests)
+  
+  gg1 = ggplot(data=ggd1,aes(x=b,y=best)) + theme_bw() + xlab("True b") + ylab("Posterior marginal mean b") +
+    stat_adj_boxplot() +
+    stat_adj_boxplot_outlier()+
+    geom_line(data=data.frame(bx=factor(seq(from=-0.8,to=0.8,by=0.1)),bgrid=seq(from=-0.8,to=0.8,by=0.1)),aes(x=factor(bx),y=bgrid, group=1), 
+              linewidth=1.2, col="blue") +
+    ggtitle("(a) Posterior marginal mean", subtitle=paste0("n = ",500))
+  
+  
+  gg2 = ggplot(data=ggd1,aes(x=b,y=bpositive)) + theme_bw() + xlab("True b") + ylab("P(b>0)") +
+    #geom_boxplot() #+
+    stat_adj_boxplot() +
+    stat_adj_boxplot_outlier()+
+    ggtitle("(c) Probability of positive trend", subtitle=paste0("n = ",500))
+  
+  
+  temp2best = read.table("tempbest-n1000.txt") #from 0.1 to 0.8
+  temp2pos = read.table("tempbpos-n1000.txt") #from 0.1 to 0.8
+  
+  roww = rowMeans(temp2best)
+  
+  
+  ggd2 = data.frame(b=factor(rep(seq(from=-0.8,to=0.8,by=0.1), each=nsims)), best=c(t(bestfull)),
+                    bpositive=c(t(bposfull)))
+  bmeanavg2 = rowMeans(bestfull)
+  
+  gg3 = ggplot(data=ggd2,aes(x=b,y=best)) + theme_bw() + xlab("True b") + ylab("Posterior marginal mean b") +
+    #geom_boxplot() +
+    stat_adj_boxplot() +
+    stat_adj_boxplot_outlier()+
     geom_line(data=data.frame(bx=factor(bgrid),bgrid=bgrid),aes(x=factor(bx),y=bgrid, group=1), 
               linewidth=1.2, col="blue") +
-    #   geom_line(data=data.frame(bx=factor(bgrid),bavg=bmeanavg),aes(x=factor(bx),y=bavg, group=1), 
-    #            linewidth=1.2, col="red") +
-    #geom_line(data=data.frame(bx=factor(bgrid),bavg=bmeanavg),aes(x=factor(bx),y=bavg, group=1), linewidth=1.2, col="blue") +
-    #geom_boxplot(aes(x=b,y=best)) +
-    ggtitle("(a) Posterior marginal mean", subtitle=paste0("n = ",n))
+    ggtitle("(b) Posterior marginal mean", subtitle=paste0("n = ",1000))
+  
+  gg4 = ggplot(data=ggd2,aes(x=b,y=bpositive)) + theme_bw() + xlab("True b") + ylab("P(b>0)") +
+    stat_adj_boxplot() +
+    stat_adj_boxplot_outlier()+
+    ggtitle("(d) Probability of positive trend", subtitle=paste0("n = ",1000))
+  ggboth = ggarrange(gg1,gg3,gg2,gg4, nrow=2,ncol=2)
+  ggboth
+  ggsave(paste0("accuracytest-full","-28800x19200.eps"),plot=ggboth, device=cairo_ps, width=28800,
+         height=19200, units="px", dpi=1800, limitsize=FALSE)
+  
   
   ggd1 = ggd
   gg2 = ggplot(data=ggd) + theme_bw() + xlab("True b") + ylab("Posterior marginal mean b") +
     geom_boxplot(aes(x=b,y=bpositive)) +
+    theme(text=element_text(size=18), plot.title = element_text(size=24)) + 
     ggtitle("(b) Probability of positive trend", subtitle=paste0("n = ",n))
   
   library(litteR)

@@ -24,13 +24,11 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
   
   if(is.null(phis)){
     phis = a+b*seq(0,1,length.out=n)
-  }else{
-    a=phis[1]
-    b=phis[length(phis)]-a
   }
   n=length(phis)
   time_norm=seq(0,1,length.out=n)
-  lambdas = -log(a+b*time_norm)
+  #lambdas = -log(a+b*time_norm)
+  lambdas = -log(phis)
   
   cc=1/(n-1)
   #phis = exp(-lambdas*c(1,diff(time_norm)/cc))
