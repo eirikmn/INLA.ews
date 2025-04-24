@@ -4,7 +4,7 @@
 #' @param data Numeric describing the observations from which early warning signals is to be detected.
 #' @param forcing Numeric describing potential forcing to the system. If no forcing
 #' is included, set to \code{numeric(0)} (default).
-#' @param formula Formula describing the linear predictor (NOT YET IMPLEMENTED)
+#' @param formula Formula describing the linear predictor
 #' @param model Character string describing which noise model should be used.
 #' Currently only supports \code{"ar1"} (default).
 #' @param compute.mu Should the forced response be computed? Set to \code{0} if not, 
