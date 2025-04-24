@@ -209,12 +209,15 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       
     }else if(print.progress && nstepsizes>=1){
       cat("Initiating inla program. Iteration ",i," of ",nstepsizes,": stepsize = ",stepsize[i],".\n",sep="")
-      if(i >= 2){
-        #inla.options$control.mode$theta = r$summary.hyperpar$mode
-        inla.options$control.mode$result = r #use previous theta and x-mode
-      }else{
-        inla.options$control.mode$result = NULL
-      }
+      
+    }
+    if(i >= 2){
+      #inla.options$control.mode$theta = r$summary.hyperpar$mode
+      inla.options$control.mode$result = r #use previous theta and x-mode
+      inla.options$control.mode$restart = TRUE
+    }else{
+      inla.options$control.mode$result = NULL
+      inla.options$control.mode$restart = FALSE
     }
     inla.options$control.inla$h = stepsize[i]
     
@@ -223,6 +226,8 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       do.call(INLA::inla, c(list(formula = formula2,data = df,family = "gaussian"),inla.options) ),
       error=warning
     )
+    
+    
     
     if(is.character(r)){
       feil = "\n Convergence can sometimes be improved by changing the step size."

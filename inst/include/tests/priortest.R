@@ -22,7 +22,7 @@ if(FALSE){
   mylp <- function(theta) {
     #dgamma(exp(theta[1]), 1, 5e-05, log=TRUE) + theta[1] + #vague
     lprior = dgamma(exp(theta[1]), shape=1, rate=0.1) + theta[1]
-    lprior = lprior -theta[2] -2*log(1+exp(theta[2]))
+    lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
     lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
       #dnorm(theta[2], sd=0.1, log=TRUE) +
       #dnorm(theta[3], sd=0.1, log=TRUE))
@@ -218,7 +218,7 @@ if(FALSE){
   
   ########## Which data to test it on? ###########
   
-  n = 1000
+  n = 500
   nsims = 1000
   
   ttime = 1:n
@@ -227,20 +227,24 @@ if(FALSE){
   
   lps = c(lp111, lp222, lp333) #same prior for all thetas
   lps = c(mylp)
+  lps = c(mylp, lp111, lp222, lp333)
   
   bgrid = seq(from=-0.8, to = 0.8, by=0.1)
   #agrid = seq(from=0.1,to=0.9,by=0.1)
+  bests0 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   bests1 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   bests2 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   bests3 = matrix(NA, nrow=length(bgrid), ncol=nsims)
+  bposs0 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   bposs1 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   bposs2 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   bposs3 = matrix(NA, nrow=length(bgrid), ncol=nsims)
   
-  bestest = list(bests1=bests1, bests2=bests2, bests3=bests3)
-  bposes = list(bposs1=bposs1, bposs2=bposs2, bposs3=bposs3)
+  bestest = list(bests0=bests0, bests1=bests1, bests2=bests2, bests3=bests3)
+  bposes = list(bposs0=bposs0, bposs1=bposs1, bposs2=bposs2, bposs3=bposs3)
   library(INLA)
-  for(sigmaiter in 1:length(sigmas)){
+  sigmas = c(0,0.1,1.0,10.0)
+  for(sigmaiter in 2:4){ #length(sigmas)){
     
     for( iter in 1:length(bgrid)){
       cat("\n\n  SIGMAITER=",sigmaiter,": ITERATION #",iter, " of ",length(bgrid)," \n\n",sep="")
@@ -289,13 +293,15 @@ if(FALSE){
         
         bpos = 1-inla.pmarginal(0,rrm$marginals.hyperpar$`Theta2 for idy`)
         
-        bests[siter, iter] = b_est
-        bposs[siter, iter] = bpos
+        bests[iter, siter] = b_est
+        bposs[iter, siter] = bpos
         
         }
-    
+      write.table(bests,paste0("prior_best_",sigmas[sigmaiter],"_n500_bfits.txt"))
+      write.table(bposs,paste0("prior_bpos_",sigmas[sigmaiter],"_n500_bfits.txt"))
     }
-    ggd = data.frame(b = factor(rep(bgrid, each=nsims)), best = c(t(bests)), bpositive = c(t(bposs)))
+    
+    #ggd = data.frame(b = factor(rep(bgrid, each=nsims)), best = c(t(bests)), bpositive = c(t(bposs)))
     #write.table(ggd,paste0("lpthetab,sigmas[sigmaiter],"_n500_bfits.txt"))
     bestest[[sigmaiter]] = bests
     bposes[[sigmaiter]] = bposs
@@ -359,7 +365,7 @@ if(FALSE){
   #ggboth = ggarrange(gg3,gg4)
   #print(ggboth)
   print(ggall)
-  ggsave("accuracytest-unif-sigma1.eps",plot=ggall, device=cairo_ps, width=18, 
+  ggsave("accuracytest-unif-sigma1-rev.eps",plot=ggall, device=cairo_ps, width=18, 
          height=12, limitsize=FALSE)
   
   btrue = bgrid
@@ -402,6 +408,40 @@ if(FALSE){
   nsims=1000
   
   
+  
+  
+  bMeans[,1] = rowMeans(best0)
+  pMeans[,1] = rowMeans(bpos0)
+  
+  ## Load data
+  
+  best0 = read.table("tempbest-n500.txt")
+  best1 = read.table("prior_best_0.1_n500_bfits.txt")
+  best2 = read.table("prior_best_1_n500_bfits.txt")
+  best3 = read.table("prior_best_10_n500_bfits.txt")
+  
+  bpos0 = read.table("tempbpos-n500.txt")
+  bpos1 = read.table("prior_bpos_0.1_n500_bfits.txt")
+  bpos2 = read.table("prior_bpos_1_n500_bfits.txt")
+  bpos3 = read.table("prior_bpos_10_n500_bfits.txt")
+  
+  ## False positives and negatives
+  
+  falsepos1 = falsepos2 = falsepos3 = numeric(9)
+  falseneg1 = falseneg2 = falseneg3 = numeric(8)
+  for(i in 1:9){
+    falsepos1[i] = sum(bpos1[i,]>0.95)
+    falsepos2[i] = sum(bpos2[i,]>0.95)
+    falsepos3[i] = sum(bpos3[i,]>0.95)
+  }
+  for(i in 1:8){
+    falseneg1[i] = sum(bpos1[i+9,]<0.95)
+    falseneg2[i] = sum(bpos2[i+9,]<0.95)
+    falseneg3[i] = sum(bpos3[i+9,]<0.95)
+  }
+  
+  
+  ##
   bMeans = matrix(NA,17,4)
   bLower = matrix(NA,17,4)
   bUpper = matrix(NA,17,4)
@@ -409,19 +449,16 @@ if(FALSE){
   pLower = matrix(NA,17,4)
   pUpper = matrix(NA,17,4)
   
-  bMeans[,1] = rowMeans(best0)
-  pMeans[,1] = rowMeans(bpos0)
-  
   blist = list()
-  blist[[1]] = best0
-  blist[[2]] = Prior_bestest[[1]]
-  blist[[3]] = Prior_bestest[[2]]
-  blist[[4]] = Prior_bestest[[3]]
+  blist[[1]] = as.matrix(best0)
+  blist[[2]] = as.matrix(best1)
+  blist[[3]] = as.matrix(best2)
+  blist[[4]] = as.matrix(best3)
   plist = list()
-  plist[[1]] = bpos0
-  plist[[2]] = Prior_bposes[[1]]
-  plist[[3]] = Prior_bposes[[2]]
-  plist[[4]] = Prior_bposes[[3]]
+  plist[[1]] = as.matrix(bpos0)
+  plist[[2]] = as.matrix(bpos1)
+  plist[[3]] = as.matrix(bpos2)
+  plist[[4]] = as.matrix(bpos3)
   library(litteR)
   ggdtest = data.frame(b = factor(rep(bgrid, each=nsims)), 
                        bpositive = c(t(plist[[4]])))
@@ -430,6 +467,7 @@ if(FALSE){
     stat_adj_boxplot() +
     theme(text=element_text(size=16), plot.title = element_text(size=22)) +
     stat_adj_boxplot_outlier()
+  
   
   
   for(i in 1:17){
@@ -459,16 +497,16 @@ if(FALSE){
     ylab("Posterior marginal mean b - true value") +
     theme(text=element_text(size=16), plot.title = element_text(size=22)) +
     geom_ribbon(aes(ymin=bLower.1,ymax=bUpper.1),fill=colors[2], alpha=0.3) +
-    geom_line(aes(y=.data[["bMeans.1"]], col=priorstring[2])) +
     scale_shape_manual(name="Priors", labels = priorstring) +
     scale_color_manual(name="Priors", values = colorvals) +
     ggtitle("(a) Prior comparison",subtitle="Posterior marginal mean")
   
   ggpb <- ggpb + geom_line(aes(y=bMeans.2, col=priorstring[3]))
   ggpb <- ggpb + geom_line(aes(y=bMeans.3, col=priorstring[4]))
-  ggpb <- ggpb + geom_line(aes(y=bMeans.4, col=priorstring[5]))
+  ggpb <- ggpb + geom_line(aes(y=bMeans.4, col=priorstring[5]))+
+  geom_line(aes(y=.data[["bMeans.1"]], col=priorstring[2])) 
   
-  #ggpb
+  ggpb
   ggpb <- ggpb + geom_line(aes(y=bseq2, col=priorstring[1]))
   #
   ggp = data.frame(b=bseq, pMeans=pMeans, pLower=pLower, pUpper=pUpper, bseq2=bseq)
@@ -476,7 +514,6 @@ if(FALSE){
     #ylab(expression(paste(hat(b)," - b"))) +
     ylab("P(b>0)") +
     geom_ribbon(aes(ymin=pLower.1,ymax=pUpper.1),fill=colors[2], alpha=0.3) +
-    geom_line(aes(y=.data[["pMeans.1"]], col=priorstring[2])) +
     scale_shape_manual(name="Priors", labels = priorstring) +
     scale_color_manual(name="Priors", values = colorvals)+
     theme(text=element_text(size=16), plot.title = element_text(size=22)) +
@@ -487,13 +524,14 @@ if(FALSE){
     #geom_ribbon(aes(ymin=pLower.2,ymax=pUpper.2),fill=colors[3], alpha=0.3) 
   
   ggpp <- ggpp + geom_line(aes(y=pMeans.3, col=priorstring[4]))
-  ggpp <- ggpp + geom_line(aes(y=pMeans.4, col=priorstring[5]))
+  ggpp <- ggpp + geom_line(aes(y=pMeans.4, col=priorstring[5])) +
+  geom_line(aes(y=.data[["pMeans.1"]], col=priorstring[2])) 
   
   ggpp
   library(ggpubr)
   ggpbp = ggarrange(ggpb,ggpp)
   ggpbp
-  ggsave("accuracytest-priorcomparison.eps",plot=ggpbp, device=cairo_ps, width=18, 
+  ggsave("accuracytest-priorcomparison-rev.eps",plot=ggpbp, device=cairo_ps, width=18, 
          height=6.5, limitsize=FALSE)
   
   falsepos = numeric(4)

@@ -19,6 +19,6 @@ Imports:
     Rcpp
 Suggests: graphics, INLA, knitr, rmarkdown, testthat
 Encoding: UTF-8
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 LazyData: true
 LinkingTo: Rcpp

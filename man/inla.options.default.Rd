@@ -12,7 +12,7 @@ Returns a list including default values for all variables in \code{inla.options}
 \description{
 Sets the default variables in the list \code{events} used to specify the climatic
 periods and separating events used in the linear predictor. The list contains the following arguments:
-\itemize{
+\describe{
   \item{\code{num.threads} }{Integer describing the number of cores used by the INLA program. 
   For rgeneric models, stabiltiy is sometimes improved by setting this equal to \code{1} (default).}
   \item{\code{control.inla} }{List containing \code{h=0.01} and \code{restart=1}. 

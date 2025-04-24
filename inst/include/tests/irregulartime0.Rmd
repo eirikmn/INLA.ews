@@ -1,0 +1,968 @@
+```{r}
+
+rgeneric.ews.ar1.2 = function(
+    cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
+    theta = NULL)
+{
+  tau = exp(15)
+  envir = environment(sys.call()[[1]])
+  
+  interpret.theta = function() {
+    if(!is.null(envir)){
+      timee=get("time",envir)
+      nn=get("n",envir)
+    }
+    kappa_eps = exp(theta[1])
+    r = diff(range(timee))
+    b = -1/r+2/r*1/(1+exp(-theta[2]))
+    
+    low = min(b*timee[1],b*timee[nn])
+    high = max(b*timee[1],b*timee[nn])
+    
+    a = -low + (1-high+low)/(1+exp(-theta[3]))
+    
+    phis = a+b*timee
+    
+    kappa_f = exp(theta[4])
+    F0 = theta[5]
+    
+    return(list(phis = phis, kappa_eps = kappa_eps, a=a,b=b,kappa_f=kappa_f,F0=F0))
+  }
+  
+  mu = function() {
+    return(numeric(0))
+    
+  }
+  
+  graph = function() {
+    if(!is.null(envir)){
+      nn=get("n",envir)
+    }else{
+      nn=get("n",environment())
+    }
+    ii = c(1,nn,2:(nn-1),1:(nn-1));jj=c(1,nn,2:(nn-1),2:nn)
+    xx=c(1,1,rep(1,nn-2),rep(1,nn-1))
+    G = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+    G[G != 0] = 1
+    return (G)
+  }
+  Q = function(){
+    if(!is.null(envir)){
+      nn=get("n",envir)
+      timee=get("time",envir)
+    }
+    params = interpret.theta()
+    phis = params$phis
+    kappa_eps = params$kappa_eps
+    kappa1=kappa_eps
+    ii=c(1,nn,2:(nn-1),1:(nn-1));jj=c(1,nn,2:(nn-1),2:nn)
+    xx = kappa_eps*c(1+phis[2]^2,1,1+phis[3:nn]^2,-phis[2:nn])
+    Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+    return (Q)
+  }
+  log.norm.const = function(){return(numeric(0))}
+  log.prior = function(){
+    params = interpret.theta()
+    lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+    #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
+    b=params$b; ra = 0; rb=1
+    lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
+    #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
+    lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
+    
+    return (lprior)
+  }
+  initial = function(){
+    return (c(0.,0.,0.)) 
+  }
+  
+  quit = function(){return ()  }
+  if(is.null(theta)){
+    theta = initial()
+  }
+  cmd = match.arg(cmd)
+  val = do.call(cmd, args = list())
+  return (val)
+}
+
+
+```
+
+```{r}
+#' rgeneric model for AR(1) time-dependent process
+#'
+#' Defines the rgeneric model structure for the AR(1) model with time-dependent
+#' correlation. This includes key functions that provide information on precision matrix, mean vector, priors, graph etc.
+#' This is intended for internal use only, but the documentation is included here in case someone want to change something.
+#'
+#' @param cmd Vector containing list of function names necessary for the rgeneric model.
+#' @param theta Vector describing the hyperparameters in internal scaling.
+#' @importFrom stats dnorm
+rgeneric.ar1 = function(
+    cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
+    theta = NULL)
+{
+  tau = exp(15)
+  envir = environment(sys.call()[[1]])
+  
+  interpret.theta = function() {
+    if(!is.null(envir)){
+      timee=get("time",envir)
+      nn=get("n",envir)
+    }
+    kappa_eps = exp(theta[1])
+    r = diff(range(timee))
+    b = -1/r+2/r*1/(1+exp(-theta[2]))
+    
+    low = min(b*timee[1],b*timee[nn])
+    high = max(b*timee[1],b*timee[nn])
+    
+    a = -low + (1-high+low)/(1+exp(-theta[3]))
+    
+    lambdas = -log(a+b*timee)
+    kappa2s = kappa_eps*2*lambdas
+    cat("a: ",a,"b: ",b,"sigma: ",1/sqrt(kappa_eps),"\n",sep="")
+    cc = 1/(nn-1)
+    phis = c(exp(-lambdas*c(1,diff(timee)/cc)) ) #rescale
+    
+    #kappa_f = exp(theta[4])
+    #F0 = theta[5]
+    print(theta)
+    return(list(phis = phis, kappa_eps = kappa_eps, a=a,b=b,#kappa_f=kappa_f,F0=F0
+                lambdas=lambdas, kappa2s=kappa2s, sigma2s=1/kappa2s))
+  }
+  
+  mu = function() {
+    return(numeric(0))
+    
+  }
+  
+  graph = function() {
+    if(!is.null(envir)){
+      nn=get("n",envir)
+    }else{
+      nn=get("n",environment())
+    }
+    ii = c(1,nn,2:(nn-1),1:(nn-1));jj=c(1,nn,2:(nn-1),2:nn)
+    xx=c(1,1,rep(1,nn-2),rep(1,nn-1))
+    G = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+    G[G != 0] = 1
+    return (G)
+  }
+  Q = function(){
+    if(!is.null(envir)){
+      nn=get("n",envir)
+      timee=get("time",envir)
+    }
+
+    params = interpret.theta()
+    phis = params$phis
+    kappa_eps = params$kappa_eps
+    kappa1=kappa_eps
+    kappa2s = params$kappa2s
+    ii=c(1,nn,2:(nn-1),1:(nn-1))
+    jj=c(1,nn,2:(nn-1),2:nn)
+    print("Q")
+    cat("range: ", range(kappa2s),"\n")
+    cat("range: ", range(phis),"\n")
+    
+    #xx = kappa_eps*c(1+phis[2]^2,1,1+phis[3:nn]^2,-phis[2:nn])
+    xx = c(kappa2s[1]*(1-phis[1]^2)+kappa2s[2]*phis[2]^2, kappa2s[nn],
+           kappa2s[2:(nn-1)]+kappa2s[3:nn]*phis[3:nn]^2,
+           -phis[2:nn]*kappa2s[2:nn])
+    
+    cat("range x: ", range(xx),"\n")
+    Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+    return (Q)
+  }
+  log.norm.const = function(){return(numeric(0))}
+  log.prior = function(){
+    if(!is.null(my.log.prior)){
+      lprior = my.log.prior(theta)
+      print("using custom log.prior function")
+    }else{
+      params = interpret.theta()
+    lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+    #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
+    #b=params$b; ra = 0; rb=1
+    #lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
+    #lprior = dnorm(theta[1],sd=0.1,log=TRUE)
+    lprior = lprior + dnorm(theta[2],sd=1,log=TRUE)
+    #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
+    lprior = lprior + dnorm(theta[3],sd=1,log=TRUE) #theta_a
+    #print(lprior)
+    }
+    
+    return (lprior)
+  }
+  initial = function(){
+    return (c(0.,0.,0.)) 
+  }
+  
+  quit = function(){return ()  }
+  if(is.null(theta)){
+    theta = initial()
+  }
+  cmd = match.arg(cmd)
+  val = do.call(cmd, args = list())
+  return (val)
+}
+
+
+
+
+```
+
+
+```{r,fig.width=15, fig.height=5}
+#library(bremla)
+library(INLA)
+library(INLA.ews)
+
+data("events_rasmussen")
+#data("event_intervals")
+data("NGRIP_5cm")
+
+#nevents = length(event_intervals[,1])  
+  
+plot(NGRIP_5cm$age,NGRIP_5cm$d18O,type="l")
+abline(v=events_rasmussen$age)
+
+GS_onsets = which(grepl("Start of GS", events_rasmussen$event, fixed = TRUE))
+GI_onsets = which(grepl("Start of GI", events_rasmussen$event, fixed = TRUE))
+
+
+#Clear_GS_onsets0 = c(9,21,23,25,29,31,33,37,41,43,45,47,51,57,61,63,65,69,71,75,77)
+#Clear_GI_onsets0 = c(8,16,22,24,26,30,32,36,40,42,44,46,50,54,60,62,64,68,70,74,76)
+
+Clear_GS_onsets = c(9,21,23,25,29,31,33,37,41,43,45,47,51,55,61,65,71)
+Clear_GI_onsets = c(8,16,22,24,26,30,32,36,40,42,44,46,50,54,60,64,70)
+
+
+#time = seq(11728,59920,5)
+maxage = 59920.5
+minage= 11728
+whichind = NGRIP_5cm$age <= maxage & NGRIP_5cm$age >= minage
+time = rev(NGRIP_5cm$age[whichind])
+proxy = rev(NGRIP_5cm$d18O[whichind])
+events = events_rasmussen$age
+
+#### Plot Time serie
+
+plot.df = data.frame(Time=time,Proxy=proxy)
+df = list()
+
+for (i in 1:length(Clear_GI_onsets)) {
+  end = events_rasmussen$age[Clear_GS_onsets[i]]
+start = events_rasmussen$age[Clear_GI_onsets[i]]
+int = which(time>start & time<end)
+df[[i]]= data.frame(Time=time[int],
+Proxy=proxy[int])
+}
+
+ggts <- ggplot()+
+ geom_line(data=plot.df,aes(x=Time,y=Proxy,color="red"),show.legend = FALSE) +
+  theme_bw()+ylab("d18O proxy")+xlab("yr BP")+xlim(60000, 11000)
+  ggts<- ggts + geom_line(data =df[[1]] ,aes(x=Time,y=Proxy),color="blue")
+  ggts<- ggts + geom_line(data =df[[2]] ,aes(x=Time,y=Proxy),color="blue")
+for (i in 3:length(Clear_GI_onsets)) {
+  ggts<- ggts + geom_line(data =df[[i]] ,aes(x=Time,y=Proxy),color="blue")
+}
+  ggts<-ggts+geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="blue")
+ ggts<-ggts+geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")
+
+ print(ggts)
+
+
+###### start things #####
+
+data_proxy = list()
+data_time = list()
+for (i in 1:length(Clear_GI_onsets)) {
+  end = events_rasmussen$age[Clear_GS_onsets[i]]
+  start = events_rasmussen$age[Clear_GI_onsets[i]]
+  int = which(time>start & time<end)
+  data_proxy[[i]] = proxy[int]
+  data_time[[i]] = time[int]
+}
+```
+
+
+
+
+```{r}
+
+phicomputer = function(res, ttime, fliptime = FALSE, nsims=10000){
+  time_norm = (ttime-min(ttime))/max(ttime-min(ttime))
+  if(fliptime){
+    time_norm = 1-time_norm
+  }
+  bmarg = inla.smarginal(inla.tmarginal(function(x) -1+2/(1+exp(-x)), res$marginals.hyperpar$`Theta2 for idy` ))
+  if(names(res$marginals.hyperpar)[1] == "Precision for idx"){
+    addone = 1
+  }else{
+    addone = 0
+  }
+  hyps = inla.hyperpar.sample(nsims,res)
+  bsamps = -1+2/(1+exp(-hyps[,2+addone]))
+  asamps = numeric(nsims)
+  phisamps = matrix(NA,nrow=n,ncol=nsims)
+  for(i in 1:nsims){
+    LOW = min(bsamps[i]*time_norm[1],bsamps[i]*time_norm[n])
+    HIGH = max(bsamps[i]*time_norm[1],bsamps[i]*time_norm[n])
+    asamps[i] = -LOW + (1-HIGH+LOW)/(1+exp(-hyps[i,3+addone]))
+    
+    phisamps[,i] = asamps[i] + bsamps[i]*time_norm
+  }
+  
+  adens = density(asamps)
+  amarg = data.frame(x=adens$x,y=adens$y)
+  
+  pmean = numeric(n)
+  pupper = numeric(n)
+  plower = numeric(n)
+  
+  for(i in 1:n){
+    dens = density(phisamps[i,])
+    ddens = data.frame(x=dens$x,y=dens$y)
+    zm = inla.zmarginal(ddens,silent=TRUE)
+    pmean[i] = zm$mean
+    pupper[i] = zm$quant0.025
+    plower[i] = zm$quant0.975
+  }
+  
+  bpos = 1-inla.pmarginal(0,bmarg)
+  
+  phires = data.frame(pmean=pmean,plower=plower,pupper=pupper,time_normalized=time_norm, time=ttime)
+  
+  retlist = list(bpos=bpos, phires=phires, bmarg=bmarg, amarg=amarg)
+    
+  return(retlist)
+}
+
+
+
+```
+
+
+
+```{r}
+
+trendcomputer = function(res,ttime,model=1, fliptime=TRUE, nsims = 10000,y=NULL){
+  n=length(ttime)
+  time_norm = (ttime-min(ttime))/max(ttime-min(ttime))
+  if(fliptime){
+    time_norm = 1-time_norm
+  }
+  
+  intm = res$marginals.fixed$`(Intercept)`
+  nfixed = 1
+  if(model %in% c(1,"1","lin")){
+    t1m = res$marginals.fixed$trend
+    nfixed=2
+  }else if(model %in% c(2,"2","square")){
+    t1m = res$marginals.fixed$trend
+    t2m = res$marginals.fixed$trend2
+    nfixed=3
+  }else if(model %in% "rw2"){
+    
+  }
+  postsamps = inla.posterior.sample(n=nsims,result = res)
+  
+  estsim = matrix(NA,nrow=n,ncol=nsims)
+  for(i in 1:nsims){
+    fixedsamps = tail(postsamps[[i]]$latent,nfixed)
+    est = rep(fixedsamps[1],n)
+    if(model %in% c(1,"1","lin")){
+      t1s = fixedsamps[2]
+      est = est + t1s*time_norm
+    }else if(model %in% c(2,"2","square")){
+      t1s = fixedsamps[2]
+      t2s = fixedsamps[3]
+      est = est + t1s*time_norm + t2s*time_norm^2
+    }else if(model %in% "rw2"){
+      temp = postsamps[[i]]$latent
+      rands = temp[n+1:n]
+      est = est + rands
+    }
+    estsim[,i]=est
+  }
+  
+  mmean = numeric(n)
+  mlower = numeric(n)
+  mupper = numeric(n)
+  for(i in 1:n){
+    dens = density(estsim[i,])
+    denss = data.frame(x=dens$x,y=dens$y)
+    zzm = inla.zmarginal(denss,silent=TRUE)
+    mmean[i] = zzm$mean
+    mlower[i] = zzm$quant0.025
+    mupper[i] = zzm$quant0.975
+  }
+  
+  mdat = data.frame(mmean=mmean,mlower=mlower,mupper=mupper,y=y,time=ttime)
+  return(mdat)
+}
+```
+
+
+```{r}
+
+
+ mylp <- function(theta) {
+   lprior = dgamma(exp(theta[1]), shape=1, rate=0.1) + theta[1]
+   lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
+   lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
+   
+   return(lprior)
+ }
+ 
+ lps = c(mylp)
+
+
+
+#### fit things
+library(INLA)
+
+
+
+library(ggplot2)
+library(ggpubr)
+ggps0 = c()
+ggps1 = c()
+ggps2 = c()
+ggpsrw2 = c()
+
+ggms1 = c()
+ggms2 = c()
+ggmsrw2 = c()
+
+rres0 = c()
+rres1 = c()
+rres2 = c()
+rresrw2 = c()
+
+rphi0 = c()
+rphi1 = c()
+rphi2 = c()
+rphirw2 = c()
+
+rt1mat = c()
+rt2mat = c()
+rtrw2mat = c()
+
+bpos0 = numeric(length(data_time))
+bpos1 = numeric(length(data_time))
+bpos2 = numeric(length(data_time))
+bposrw2 = numeric(length(data_time))
+
+
+ m = get("inla.models", inla.get.inlaEnv())
+ m$latent$rw2$min.diff = NULL
+ assign("inla.models", m, inla.get.inlaEnv())
+#length(data_time)
+for( i in 1:length(data_time)){
+  cat("running event #",i,"\n",sep="")
+  fliptime=TRUE
+  n = length(data_time[[i]])
+  
+  pproxy = data_proxy[[i]]
+  ttime = data_time[[i]]
+  time_norm = (ttime-min(ttime))/max(ttime-min(ttime))
+  time_normalized=time_norm
+  if(fliptime) time_normalized = 1-time_norm #make it increasing to avoid errors
+  
+  trend1 = time_normalized
+  trend2 = time_normalized^2
+  
+  rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1,n=n,
+                                          time=time_normalized,
+                                           my.log.prior=lps[[1]])
+  formula0 = y ~ 1 + f(idy, model=rgen_model)
+  formula1 = y ~ 1 + trend+ f(idy, model=rgen_model)
+  formula2 = y ~ 1 + trend + trend2 + f(idy, model=rgen_model)
+  formularw2 = y ~ 1 + f(idx,model="rw2")+ f(idy, model=rgen_model)
+  
+  dataframe = data.frame(y=pproxy, time=ttime,trend=trend1,trend2=trend2, idx=1:n,idy=1:n)
+  
+  res0 = inla(formula0,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE))
+  res0 = inla(formula0,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE), control.mode = list(result=rres0, restart=TRUE))
+  
+  res1 = inla(formula1,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE))
+  res1 = inla(formula1,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE), control.mode = list(result=rres1, restart=TRUE))
+  
+  res2 = inla(formula2,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE))
+  res2 = inla(formula2,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE), control.mode = list(result=rres2, restart=TRUE))
+  
+  resrw2 = inla(formularw2,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+                control.compute=list(config=TRUE))
+  resrw2 = inla(formularw2,data=dataframe,family="gaussian",control.family=list(initial=12,fixed=TRUE),
+              control.compute=list(config=TRUE), control.mode = list(result=rresrw2, restart=TRUE))
+  cat("Done with INLA. Performing post-processing...\n",sep="")
+  
+  rres0 = c(rres0,list(res0))
+  rres1 = c(rres1,list(res1))
+  rres2 = c(rres2,list(res2))
+  rresrw2 = c(rresrw2,list(resrw2))
+  
+  phi0 = phicomputer(res0, ttime, fliptime = fliptime)
+  phi1 = phicomputer(res1, ttime, fliptime = fliptime)
+  phi2 = phicomputer(res2, ttime, fliptime = fliptime)
+  phirw2 = phicomputer(resrw2, ttime, fliptime = fliptime)
+  
+  
+  rphi0 = c(rphi0,list(phi0))
+  rphi1 = c(rphi1,list(phi1))
+  rphi2 = c(rphi2,list(phi2))
+  rphirw2 = c(rphirw2,list(phirw2))
+  
+  
+  
+  flip.bpos = FALSE
+  if(flip.bpos){
+    bpos0[i] = 1-phi0$bpos
+    bpos1[i] = 1-phi1$bpos
+    bpos2[i] = 1-phi2$bpos
+    bposrw2[i] = 1-phirw2$bpos
+  }else{
+    bpos0[i] = phi0$bpos
+    bpos1[i] = phi1$bpos
+    bpos2[i] = phi2$bpos
+    bposrw2[i] = phirw2$bpos
+  }
+  cat("P(b>0): \n","\tNo trend:\t",
+      round(bpos0[i],digits=4),"\n\tLinear trend:\t",
+      round(bpos1[i],digits=4),"\n\tSquare trend:\t",
+      round(bpos2[i],digits=4),"\n\tRW2 trend:\t",
+      round(bposrw2[i],digits=4),"\n",sep="")
+  
+  
+  
+  
+   #printing phis
+  ggp0 = ggplot(data=phi0$phires,aes(x=time)) + 
+    geom_ribbon(aes(ymin=plower,ymax=pupper),col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=pmean),col="blue",linewidth=1.2) + xlab("Time") + xlim(rev(range(ttime))) + 
+    ylim(c(0,1)) + theme_bw() + ggtitle(paste0("Event #",i, " notrend"),subtitle=paste0("P(b>0) = ", round(bpos0[i],digits=3))) +
+    ylab(expression(paste(phi,"(t)")))
+  ggp1 = ggplot(data=phi1$phires,aes(x=time)) + 
+    geom_ribbon(aes(ymin=plower,ymax=pupper),col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=pmean),col="blue",linewidth=1.2) + xlab("Time") + xlim(rev(range(ttime))) + 
+    ylim(c(0,1)) + theme_bw() + 
+    ggtitle(paste0("Event #",i, " Linear trend"),subtitle=paste0("P(b>0) = ", round(bpos1[i],digits=3))) +
+    ylab(expression(paste(phi,"(t)")))
+  ggp2 = ggplot(data=phi2$phires,aes(x=time)) + 
+    geom_ribbon(aes(ymin=plower,ymax=pupper),col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=pmean),col="blue",linewidth=1.2) + xlab("Time") + xlim(rev(range(ttime))) + 
+    ylim(c(0,1)) + theme_bw() + 
+    ggtitle(paste0("Event #",i, " Square trend"),subtitle=paste0("P(b>0) = ", round(bpos2[i],digits=3))) +
+    ylab(expression(paste(phi,"(t)")))
+  ggprw2 = ggplot(data=phirw2$phires,aes(x=time)) + 
+    geom_ribbon(aes(ymin=plower,ymax=pupper),col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=pmean),col="blue",linewidth=1.2) + xlab("Time") + xlim(rev(range(ttime))) + 
+    ylim(c(0,1)) + theme_bw() + 
+    ggtitle(paste0("Event #",i, " RW2 trend"),subtitle = paste0("P(b>0) = ", round(bposrw2[i],digits=3))) +
+    ylab(expression(paste(phi,"(t)")))
+  
+  ggps0 = c(ggps0, ggp0)
+  ggps1 = c(ggps1, ggp1)
+  ggps2 = c(ggps2, ggp2)
+  ggpsrw2 = c(ggpsrw2, ggprw2)
+  
+    print(ggarrange(ggp0,ggp1,ggp2,ggprw2,nrow=2,ncol=2))
+  
+  t1mat = trendcomputer(res1,ttime,model=1, fliptime=fliptime, nsims = 10000, y=pproxy)
+  t2mat = trendcomputer(res2,ttime,model=2, fliptime=fliptime, nsims = 10000, y=pproxy)
+  trw2mat = trendcomputer(resrw2,ttime,model="rw2", fliptime=fliptime, nsims = 10000, y=pproxy)
+  
+  rt1mat=c(rt1mat,list(t1mat))
+  rt2mat=c(rt2mat,list(t2mat))
+  rtrw2mat=c(rtrw2mat,list(trw2mat))
+  
+  
+  #printig means
+  ggm1 = ggplot(data=t1mat,aes(ttime)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+ theme_bw() +
+    xlab("Time (yb2k)")+ ylab(expression(paste(delta^18,"O (permil)")))+
+    ggtitle(paste0("Event #",i, " Linear trend"))+ xlim(rev(range(ttime))) 
+  ggm2 = ggplot(data=t2mat,aes(ttime)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+ theme_bw() +
+    xlab("Time (yb2k)")+ ylab(expression(paste(delta^18,"O (permil)")))+
+    ggtitle(paste0("Event #",i, " Square trend"))+ xlim(rev(range(ttime))) 
+  ggmrw2 = ggplot(data=trw2mat,aes(ttime)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+ theme_bw() +
+    xlab("Time (yb2k)")+ ylab(expression(paste(delta^18,"O (permil)"))) +
+    ggtitle(paste0("Event #",i, " RW2 trend"))+ xlim(rev(range(ttime))) 
+  
+  ggms1 = c(ggms1, ggm1)
+  ggms2 = c(ggms2, ggm2)
+  ggmsrw2 = c(ggmsrw2, ggmrw2)
+  
+  print(ggarrange(ggm1,ggm2,ggmrw2,nrow=2,ncol=2))
+}
+
+
+
+
+
+```
+
+
+
+```{r}
+df_plot_RW2 = list()
+df_plot_Lin = list()
+df_plot_Quad = list()
+df_plot_Nt = list()
+
+for (i in 1:17) {
+
+
+df_plot_RW2[[i]]= data.frame(Time=rphirw2[[i]]$phires$time,
+                              Phi=rphirw2[[i]]$phires$pmean,
+                              phi_Low = rphirw2[[i]]$phires$plower,
+                              phi_Upp= rphirw2[[i]]$phires$pupper
+)
+
+df_plot_Lin[[i]]= data.frame(Time=rphi1[[i]]$phires$time,
+                             Phi=rphi1[[i]]$phires$pmean,
+                              phi_Low = rphi1[[i]]$phires$plower,
+                              phi_Upp= rphi1[[i]]$phires$pupper
+)
+
+df_plot_Quad[[i]]= data.frame(Time=rphi2[[i]]$phires$time,
+                             Phi=rphi2[[i]]$phires$pmean,
+                              phi_Low = rphi2[[i]]$phires$plower,
+                              phi_Upp= rphi2[[i]]$phires$pupper
+)
+
+df_plot_Nt[[i]]= data.frame(Time=rphi0[[i]]$phires$time,
+                             Phi=rphi0[[i]]$phires$pmean,
+                              phi_Low = rphi0[[i]]$phires$plower,
+                              phi_Upp= rphi0[[i]]$phires$pupper
+)
+
+
+}
+
+
+```
+
+
+```{r,fig.width=15, fig.height=5}
+## RW2
+
+gg_phi_RW2 <- ggplot()+
+ geom_line(data=df_plot_RW2[[1]],aes(x=Time,y=Phi,color="red"),size=1) +
+geom_ribbon(data=df_plot_RW2[[1]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)+
+theme_bw()+ labs(title="Phi Evolution ")+ylab("Memory indicators")+xlab("yr BP")+xlim(61000, 10000)+labs(colour="Memory Parameter")+
+  scale_color_hue(labels = c("RW2"))+
+   annotate(geom="text", x=mean(range(df_plot_RW2[[1]]$Time)), y=0.9, label="1")+
+   annotate(geom="text", x=mean(range(df_plot_RW2[[1]]$Time)), y=0.7, label=as.character(round(bposrw2[1],2)))
+  
+for (i in 2:17) {
+  gg_phi_RW2<- gg_phi_RW2 + geom_line(data=df_plot_RW2[[i]],aes(x=Time,y=Phi,color="red"),show.legend = FALSE,size=1)
+  gg_phi_RW2<- gg_phi_RW2 + geom_ribbon(data=df_plot_RW2[[i]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)
+  
+  gg_phi_RW2<- gg_phi_RW2 +annotate(geom="text", x=mean(range(df_plot_RW2[[i]]$Time)), y=0.9, label=as.character(i))+
+    annotate(geom="text", x=mean(range(df_plot_RW2[[i]]$Time)), y=0.7, label=as.character(round(bposrw2[i],2)))
+}
+  gg_phi_RW2 <- gg_phi_RW2 + geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue")
+  gg_phi_RW2 <- gg_phi_RW2 + geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")
+
+
+## Lin 
+  
+  gg_phi_Lin <- ggplot()+
+  geom_line(data=df_plot_Lin[[1]],aes(x=Time,y=Phi,color="red"),size=1) +
+  geom_ribbon(data=df_plot_Lin[[1]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)+
+  theme_bw()+ labs(title="Phi Evolution ")+ylab("Memory indicators")+xlab("yr BP")+xlim(61000, 10000)+labs(colour="Memory Parameter")+
+  scale_color_hue(labels = c("Lin"))+
+  annotate(geom="text", x=mean(range(df_plot_Lin[[1]]$Time)), y=0.9, label="1")+
+   annotate(geom="text", x=mean(range(df_plot_Lin[[1]]$Time)), y=0.7, label=as.character(round(bpos1[1],2)))
+
+for (i in 2:17) {
+  gg_phi_Lin<- gg_phi_Lin + geom_line(data=df_plot_Lin[[i]],aes(x=Time,y=Phi,color="red"),show.legend = FALSE,size=1)
+  gg_phi_Lin<- gg_phi_Lin + geom_ribbon(data=df_plot_Lin[[i]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)
+  
+  gg_phi_Lin<- gg_phi_Lin +annotate(geom="text", x=mean(range(df_plot_Lin[[i]]$Time)), y=0.9, label=as.character(i))+
+    annotate(geom="text", x=mean(range(df_plot_Lin[[i]]$Time)), y=0.7, label=as.character(round(bpos1[i],2)))
+}
+gg_phi_Lin <- gg_phi_Lin + geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue")
+gg_phi_Lin <- gg_phi_Lin + geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")
+  
+  
+## Quad 
+
+gg_phi_Quad <- ggplot()+
+  geom_line(data=df_plot_Quad[[1]],aes(x=Time,y=Phi,color="red"),size=1) +
+  geom_ribbon(data=df_plot_Quad[[1]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)+
+    theme_bw()+ labs(title="Phi Evolution ")+ylab("Memory indicators")+xlab("yr BP")+xlim(61000, 10000)+labs(colour="Memory Parameter")+
+  scale_color_hue(labels = c("Quad"))+
+  annotate(geom="text", x=mean(range(df_plot_Quad[[1]]$Time)), y=0.9, label="1")+
+   annotate(geom="text", x=mean(range(df_plot_Quad[[1]]$Time)), y=0.7, label=as.character(round(bpos2[1],2)))
+
+for (i in 2:17) {
+  gg_phi_Quad<- gg_phi_Quad + geom_line(data=df_plot_Quad[[i]],aes(x=Time,y=Phi,color="red"),show.legend = FALSE,size=1)
+  gg_phi_Quad<- gg_phi_Quad + geom_ribbon(data=df_plot_Quad[[i]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)
+  
+  gg_phi_Quad<- gg_phi_Quad +annotate(geom="text", x=mean(range(df_plot_Quad[[i]]$Time)), y=0.9, label=as.character(i))+
+    annotate(geom="text", x=mean(range(df_plot_Quad[[i]]$Time)), y=0.7, label=as.character(round(bpos2[i],2)))
+}
+gg_phi_Quad <- gg_phi_Quad + geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue")
+gg_phi_Quad <- gg_phi_Quad + geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")
+  
+  
+## No-Trend
+  
+ gg_phi_Nt <- ggplot()+
+  geom_line(data=df_plot_Nt[[1]],aes(x=Time,y=Phi,color="red"),size=1) +
+  geom_ribbon(data=df_plot_Nt[[1]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)+
+  theme_bw()+ labs(title="Phi Evolution ")+ylab("Memory indicators")+xlab("yr BP")+xlim(61000, 10000)+labs(colour="Memory Parameter")+
+  scale_color_hue(labels = c("Nt"))+
+  annotate(geom="text", x=mean(range(df_plot_Nt[[1]]$Time)), y=0.9, label="1")+
+   annotate(geom="text", x=mean(range(df_plot_Nt[[1]]$Time)), y=0.7, label=as.character(round(bpos0[1],2)))
+
+for (i in 2:17) {
+  gg_phi_Nt<- gg_phi_Nt + geom_line(data=df_plot_Nt[[i]],aes(x=Time,y=Phi,color="red"),show.legend = FALSE,size=1)
+  gg_phi_Nt<- gg_phi_Nt + geom_ribbon(data=df_plot_Nt[[i]],aes(x=Time,y=Phi,ymin=phi_Low,ymax=phi_Upp,color="red",fill="red",alpha=0.1),show.legend = FALSE)
+  
+  gg_phi_Nt<- gg_phi_Nt +annotate(geom="text", x=mean(range(df_plot_Nt[[i]]$Time)), y=0.9, label=as.character(i))+
+    annotate(geom="text", x=mean(range(df_plot_Nt[[i]]$Time)), y=0.7, label=as.character(round(bpos0[i],2)))
+}
+gg_phi_Nt <- gg_phi_Nt + geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue")
+gg_phi_Nt <- gg_phi_Nt + geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red") 
+  
+  
+
+
+gg_phi_RW2
+
+gg_phi_Lin
+
+gg_phi_Quad
+
+gg_phi_Nt
+```
+
+
+
+```{r,fig.width=15, fig.height=10}
+library(patchwork)
+
+
+ggm1 = ggplot(data=t1mat,aes(ttime)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+ theme_bw() +
+    xlab("Time (yb2k)")+ ylab(expression(paste(delta^18,"O (permil)")))+
+    ggtitle(paste0("Event #",i, " Linear trend"))+ xlim(rev(range(ttime))) 
+
+library(ggbreak)
+
+
+## Plot 1
+
+gg_mean_Lin1 <- ggplot(data=rt1mat[[1]],aes(time)) + 
+  geom_line(aes(y=y),col="gray")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+
+    theme_bw()+ labs(title="Linear Detrendings ")+
+  ylab("")+#expression(paste(delta^18,"O (permil)")))+
+  xlab("")+#Time (yb2k)")
+  theme(text = element_text(size = 20))
+  #xlim(28000, min(rt1mat[[1]]$time))
+for (i in 2:3) {
+  gg_mean_Lin1<- gg_mean_Lin1 + 
+    geom_line(data=rt1mat[[i]],aes(x=time,y=y),col="gray") +
+    geom_ribbon(data=rt1mat[[i]],aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5)+ geom_line(data=rt1mat[[i]],aes(x=time,y=mmean),col="blue",linewidth=1.2)
+}
+gg_mean_Lin1 <- gg_mean_Lin1 + 
+  geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue") +
+  geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 15)) +
+ coord_cartesian(xlim =c(max(rt1mat[[3]]$time)+50, min(rt1mat[[1]]$time)-50),expand = FALSE)+
+  theme(panel.grid.major = element_blank(), 
+               panel.grid.minor = element_blank())
+  
+## Plot 2
+
+gg_mean_Lin2 <- ggplot(data=rt1mat[[4]],aes(time)) + 
+  geom_line(aes(y=y),col="gray")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+
+    theme_bw()+ #labs(title="Linratic Detrending ")+
+  ylab(expression(paste(delta^18,"O (permil)")))+
+  xlab("")+#Time (yb2k)")
+  theme(text = element_text(size = 20))
+for (i in 4:11) {
+  gg_mean_Lin2<- gg_mean_Lin2 + 
+    geom_line(data=rt1mat[[i]],aes(x=time,y=y),col="gray") +
+    geom_ribbon(data=rt1mat[[i]],aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5)+ geom_line(data=rt1mat[[i]],aes(x=time,y=mmean),col="blue",linewidth=1.2)
+}
+gg_mean_Lin2 <- gg_mean_Lin2 + 
+  geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue") +
+  geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 15)) +
+ coord_cartesian(xlim =c(max(rt1mat[[11]]$time)+50, min(rt1mat[[4]]$time)-50),expand = FALSE)+
+  theme(panel.grid.major = element_blank(), 
+               panel.grid.minor = element_blank())
+
+## Plot 3
+
+gg_mean_Lin3 <- ggplot(data=rt1mat[[12]],aes(time)) + 
+  geom_line(aes(y=y),col="gray")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+
+    theme_bw()+ #labs(title="Linratic Detrending ")+
+  ylab("")+#expression(paste(delta^18,"O (permil)")))+
+  xlab("Time (yb2k)")+
+  theme(text = element_text(size = 20))
+for (i in 13:17) {
+  gg_mean_Lin3<- gg_mean_Lin3 + 
+    geom_line(data=rt1mat[[i]],aes(x=time,y=y),col="gray") +
+    geom_ribbon(data=rt1mat[[i]],aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5)+ geom_line(data=rt1mat[[i]],aes(x=time,y=mmean),col="blue",linewidth=1.2)
+}
+gg_mean_Lin3 <- gg_mean_Lin3 + 
+  geom_vline(xintercept=c(events[Clear_GS_onsets[12:17]]),color ="Blue") +
+  geom_vline(xintercept=c(events[Clear_GI_onsets[12:17]]),color ="red")+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+coord_cartesian(xlim =c(max(rt1mat[[17]]$time)+50, min(rt1mat[[12]]$time)-50),expand = FALSE)+
+  theme(panel.grid.major = element_blank(), 
+               panel.grid.minor = element_blank())
+
+
+gg_mean_Lin3
+
+
+
+gg_mean_Lin1/gg_mean_Lin2/gg_mean_Lin3
+
+
+```
+
+
+
+```{r,fig.width=15, fig.height=15}
+
+gg_mean_list_Lin = list()
+
+
+
+for (i in 1:17) {
+gg_mean_list_Lin[[i]] <- ggplot(data=rt1mat[[i]],aes(time)) + 
+  geom_line(aes(y=y),col="gray")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5) +
+    geom_line(aes(y=mmean), col="blue", linewidth=2)+
+  geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue") +
+  geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5)) +
+ coord_cartesian(xlim =c(max(rt2mat[[i]]$time)+30, min(rt2mat[[i]]$time)-30),expand = FALSE)+
+    theme_bw()+ labs(title=paste("Event # ", as.character(i)) )+
+  if(i==4 || i==13){ylab(expression(paste(delta^18,"O (permil)")))}
+    else {ylab("")}
+  gg_mean_list_Lin[[i]] <- gg_mean_list_Lin[[i]] + if(i==8||i==17 ){xlab("Time (yb2k)")}else{xlab(" ")}
+}
+
+
+gg_mean_list_Lin[[1]]+gg_mean_list_Lin[[2]]+gg_mean_list_Lin[[3]]+
+  gg_mean_list_Lin[[4]]+gg_mean_list_Lin[[5]]+gg_mean_list_Lin[[6]]+
+  gg_mean_list_Lin[[7]] + gg_mean_list_Lin[[8]]+gg_mean_list_Lin[[9]]+plot_layout(ncol = 3)+plot_annotation(title = "Linear Detrendings")
+
+  
+  
+  
+    gg_mean_list_Lin[[10]] + gg_mean_list_Lin[[11]]+gg_mean_list_Lin[[12]]+
+    gg_mean_list_Lin[[13]] + gg_mean_list_Lin[[14]]+gg_mean_list_Lin[[15]]+
+    gg_mean_list_Lin[[16]] + gg_mean_list_Lin[[17]] +plot_layout(ncol = 3)+plot_annotation(title = "Linear Detrendings")
+
+
+```
+
+
+```{r,fig.width=15, fig.height=10}
+
+
+df_test = list()
+
+
+
+for (j in 1:17) {
+  df_test[[j]] = data.frame(y=rt1mat[[j]]$y,
+                            mlower=rt1mat[[j]]$mlower,
+                            mupper=rt1mat[[j]]$mupper,
+                            mmean=rt1mat[[j]]$mmean,
+                            time = seq((j-1)*2,((j-1)*2)+1,along.with=rt1mat[[j]]$time))
+
+}
+
+
+
+## Plot 1
+
+gg_mean_Lin_test <- ggplot(data=rt1mat[[1]],aes(x=seq(0,1,along.with=rt1mat[[1]]$time))) + 
+  geom_line(aes(y=y),col="gray")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+
+    theme_bw()+ labs(title="Linear Detrendings ")+
+  ylab("")+#expression(paste(delta^18,"O (permil)")))+
+  xlab("")+#Time (yb2k)")
+  theme(text = element_text(size = 20))
+
+for (j in 2:9) {
+ gg_mean_Lin_test<- gg_mean_Lin_test + 
+ geom_line(data=df_test[[j]], aes(x=time,y=y),col="gray")+
+    geom_ribbon(data=df_test[[j]],aes(x=time, ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5)+
+    geom_line(data=df_test[[j]],aes(x=time,y=mmean),col="blue",linewidth=1.2)
+}
+
+
+## Plot 2
+
+gg_mean_Lin_test2 <- ggplot(data=rt1mat[[10]],aes(x=seq(0,1,along.with=rt1mat[[10]]$time))) + 
+  geom_line(aes(y=y),col="gray")+
+    geom_ribbon(aes(ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5) +
+    geom_line(aes(y=mmean), col="blue", linewidth=1.2)+
+    theme_bw()+ labs(title="Linear Detrendings ")+
+  ylab("")+#expression(paste(delta^18,"O (permil)")))+
+  xlab("")+#Time (yb2k)")
+  theme(text = element_text(size = 20))
+
+for (j in 11:17) {
+ gg_mean_Lin_test2<- gg_mean_Lin_test2 + 
+ geom_line(data=df_test[[j]], aes(x=time-18,y=y),col="gray")+
+    geom_ribbon(data=df_test[[j]],aes(x=time-18, ymin=mlower,ymax=mupper),col="red",fill="red",alpha=0.3,linewidth=0.5)+
+    geom_line(data=df_test[[j]],aes(x=time-18,y=mmean),col="blue",linewidth=1.2)
+}
+
+
+
+gg_mean_Lin_test/gg_mean_Lin_test2
+
+
+
+gg_mean_Lin_test <- gg_mean_Lin_test + 
+  #geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue") +
+  #geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 15)) +
+ coord_cartesian(xlim =c(18,0),expand = FALSE)
+
+
+
+
+
+
+```
+

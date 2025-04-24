@@ -1,6 +1,120 @@
 if(FALSE){
+  library(INLA)
+  rgeneric.ar1 = function(
+    cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
+    theta = NULL)
+  {
+    tau = exp(15)
+    envir = environment(sys.call()[[1]])
+    
+    interpret.theta = function() {
+      if(!is.null(envir)){
+        timee=get("time",envir)
+        nn=get("n",envir)
+      }
+      kappa_eps = exp(theta[1])
+      r = diff(range(timee))
+      b = -1/r+2/r*1/(1+exp(-theta[2]))
+      
+      low = min(b*timee[1],b*timee[nn])
+      high = max(b*timee[1],b*timee[nn])
+      
+      a = -low + (1-high+low)/(1+exp(-theta[3]))
+      
+      lambdas = -log(a+b*timee)
+      kappa2s = kappa_eps*2*lambdas
+      cat("a: ",a,"b: ",b,"sigma: ",1/sqrt(kappa_eps),"\n",sep="")
+      cc = 1/(nn-1)
+      phis = c(exp(-lambdas*c(1,diff(timee)/cc)) ) #rescale
+      
+      #kappa_f = exp(theta[4])
+      #F0 = theta[5]
+      print(theta)
+      return(list(phis = phis, kappa_eps = kappa_eps, a=a,b=b,#kappa_f=kappa_f,F0=F0
+                  lambdas=lambdas, kappa2s=kappa2s, sigma2s=1/kappa2s))
+    }
+    
+    mu = function() {
+      return(numeric(0))
+      
+    }
+    
+    graph = function() {
+      if(!is.null(envir)){
+        nn=get("n",envir)
+      }else{
+        nn=get("n",environment())
+      }
+      ii = c(1,nn,2:(nn-1),1:(nn-1));jj=c(1,nn,2:(nn-1),2:nn)
+      xx=c(1,1,rep(1,nn-2),rep(1,nn-1))
+      G = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+      G[G != 0] = 1
+      return (G)
+    }
+    Q = function(){
+      if(!is.null(envir)){
+        nn=get("n",envir)
+        timee=get("time",envir)
+      }
+      
+      params = interpret.theta()
+      phis = params$phis
+      kappa_eps = params$kappa_eps
+      kappa1=kappa_eps
+      kappa2s = params$kappa2s
+      ii=c(1,nn,2:(nn-1),1:(nn-1))
+      jj=c(1,nn,2:(nn-1),2:nn)
+      print("Q")
+      cat("range: ", range(kappa2s),"\n")
+      cat("range: ", range(phis),"\n")
+      
+      #xx = kappa_eps*c(1+phis[2]^2,1,1+phis[3:nn]^2,-phis[2:nn])
+      xx = c(kappa2s[1]*(1-phis[1]^2)+kappa2s[2]*phis[2]^2, kappa2s[nn],
+             kappa2s[2:(nn-1)]+kappa2s[3:nn]*phis[3:nn]^2,
+             -phis[2:nn]*kappa2s[2:nn])
+      
+      cat("range x: ", range(xx),"\n")
+      Q = Matrix::sparseMatrix(i=ii,j=jj,x=xx,symmetric=TRUE)
+      return (Q)
+    }
+    log.norm.const = function(){return(numeric(0))}
+    log.prior = function(){
+      if(!is.null(envir)){
+        if(!is.null(envir[["my.log.prior"]])){
+          my.prior=get("my.log.prior",envir)
+        }else{
+          my.prior=NULL
+        }
+      }else{
+        my.prior=NULL
+      }
+      if(!is.null(my.prior)){
+        lprior = my.prior(theta)
+      }else{
+        params = interpret.theta()
+        lprior = dgamma(exp(theta[1]), shape=1, rate=0.1, log=TRUE) + theta[1]
+        lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
+        lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
+        
+      }
+      
+      return (lprior)
+    }
+    initial = function(){
+      return (c(0.,0.,0.)) 
+    }
+    
+    quit = function(){return ()  }
+    if(is.null(theta)){
+      theta = initial()
+    }
+    cmd = match.arg(cmd)
+    val = do.call(cmd, args = list())
+    return (val)
+  }
   
-  n = 500
+  
+  n = 1000
   nsims = 1000
   #psims = 2000
   ttime = 1:n
@@ -66,17 +180,30 @@ if(FALSE){
       bposs[iter, siter] = bpos
       
     }
-   
+    write.table(bests,paste0("tempbest-n",n,".txt"))
+    write.table(bposs,paste0("tempbpos-n",n,".txt"))
     
   }
   
-  #temp = read.table("n500_bfits.txt")
+  #temp = read.table("tempbest-n1000.txt")
   nsims=1000
   n=500
   #bgrid = matrix(temp$b,ncol=nsims)
   bgrid=seq(-0.8,0.8,by=0.1)
-  bests=t(matrix(temp$best,ncol=nsims))
-  bposs=t(matrix(temp$bpositive,ncol=nsims))
+  #bests=t(matrix(temp$best,ncol=nsims))
+  #bposs=t(matrix(temp$bpositive,ncol=nsims))
+  
+  if(FALSE){
+    #bests=t(matrix(temp$best,ncol=nsims))
+    #bposs=t(matrix(temp$bpositive,ncol=nsims)) 
+  }else{
+    tempbest = read.table(paste0("tempbest-n",500,".txt"))
+    tempbpos = read.table(paste0("tempbpos-n",500,".txt"))
+    
+    bests = as.matrix(tempbest)
+    bposs = as.matrix(tempbpos)
+  }
+  
   
   library(ggplot2)
   library(litteR)
@@ -101,8 +228,21 @@ if(FALSE){
     ggtitle("(c) Probability of positive trend", subtitle=paste0("n = ",500))
   
   
-  temp2best = read.table("tempbest-n1000.txt") #from 0.1 to 0.8
-  temp2pos = read.table("tempbpos-n1000.txt") #from 0.1 to 0.8
+  
+  if(FALSE){
+    temp1best = read.table("tempbest-n500.txt") #from 0.1 to 0.8
+    temp1pos = read.table("tempbpos-n500.txt") #from 0.1 to 0.8
+    temp2best = read.table("tempbest-n1000.txt") #from 0.1 to 0.8
+    temp2pos = read.table("tempbpos-n1000.txt") #from 0.1 to 0.8
+  }else{
+    temp2best = read.table(paste0("tempbest-n",1000,".txt"))
+    temp2bpos = read.table(paste0("tempbpos-n",1000,".txt"))
+    
+    bestfull = as.matrix(temp2best)
+    bposfull = as.matrix(temp2bpos)
+  }
+  
+
   
   roww = rowMeans(temp2best)
   
@@ -123,9 +263,10 @@ if(FALSE){
     stat_adj_boxplot() +
     stat_adj_boxplot_outlier()+
     ggtitle("(d) Probability of positive trend", subtitle=paste0("n = ",1000))
+  library(ggpubr)
   ggboth = ggarrange(gg1,gg3,gg2,gg4, nrow=2,ncol=2)
   ggboth
-  ggsave(paste0("accuracytest-full","-28800x19200.eps"),plot=ggboth, device=cairo_ps, width=28800,
+  ggsave(paste0("accuracytest-full","-28800x19200-rev.eps"),plot=ggboth, device=cairo_ps, width=28800,
          height=19200, units="px", dpi=1800, limitsize=FALSE)
   
   
@@ -155,7 +296,7 @@ if(FALSE){
   
   ggboth = ggarrange(gg1,gg2)
   ggboth
-  ggsave(paste0("accuracytest-n",n,"-sigma",sigma,"-28800x9600.eps"),plot=ggboth, device=cairo_ps, width=28800,
+  ggsave(paste0("accuracytest-n",n,"-sigma",sigma,"-28800x9600-rev.eps"),plot=ggboth, device=cairo_ps, width=28800,
          height=9600, units="px", dpi=1800, limitsize=FALSE)
   
 }
@@ -226,8 +367,8 @@ if(FALSE){
       
     }
     
-    write.table(bests2,"tempbest-n1000.txt")
-    write.table(bposs2,"tempbpos-n1000.txt")
+    write.table(bests2,paste0("tempbest-n",n,".txt"))
+    write.table(bposs2,paste0("tempbpos-n",n,".txt"))
     
     
   }
@@ -250,20 +391,24 @@ if(FALSE){
   
   
   btrue = seq(from=-0.8,to=0.8,by=0.1)
-  bmean500 = rowMeans(bests)
-  bpos500 = rowMeans(bposs)
-  bmean1000 = rowMeans(bestfull)
-  bpos1000 = rowMeans(bposfull)
+  #temp1best = read.table("tempbest-n500.txt") #from 0.1 to 0.8
+  #temp1pos
+  bmean500 = rowMeans(temp1best)#bests)
+  bpos500 = rowMeans(temp1pos)#bposs)
+  bmean1000 = rowMeans(temp2best)#bestfull)
+  bpos1000 = rowMeans(temp2pos)#bposfull)
   
-  bL500 = numeric(17)
-  bposL500 = numeric(17)
-  bL1000 = numeric(17)
-  bposL1000 = numeric(17)
-  bU500 = numeric(17)
-  bposU500 = numeric(17)
-  bU1000 = numeric(17)
-  bposU1000 = numeric(17)
-  for(i in 1:17){
+  bpos500_num = bpos1000_num = numeric(17)
+  
+  # bL500 = numeric(17)
+  # bposL500 = numeric(17)
+  # bL1000 = numeric(17)
+  # bposL1000 = numeric(17)
+  # bU500 = numeric(17)
+  # bposU500 = numeric(17)
+  # bU1000 = numeric(17)
+  # bposU1000 = numeric(17)
+   for(i in 1:17){
     #denst11 = density(bests[i,]); denst1 = data.frame(x=denst11$x,y=denst11$y)
     #densp11 = density(bposs[i,]); densp1 = data.frame(x=densp11$x,y=densp11$y)
     #denst22 = density(bestfull[i,]); denst2 = data.frame(x=denst22$x,y=denst22$y)
@@ -280,8 +425,11 @@ if(FALSE){
     #bposU500 = zmp1$quant0.975
     #bposL1000 = zmp2$quant0.025
     #bposU1000 = zmp2$quant0.975
+    bpos500_num[i] = sum(temp1pos[i,]>0.95)
+    bpos1000_num[i] = sum(temp2pos[i,]>0.95)
     cat(btrue[i], " & ",round(bmean500[i],digits=DIGITS)," & ", round(bmean1000[i],digits=DIGITS), " & ",
-        round(bpos500[i],digits=DIGITS), " & ",round(bpos1000[i],digits=DIGITS), "\\\\ \n", sep="")
+        round(bpos500[i],digits=DIGITS), " & ",round(bpos1000[i],digits=DIGITS),
+        " & ",bpos500_num[i], " & ",bpos1000_num[i], "\\\\ \n", sep="")
   }
   
   
@@ -365,7 +513,7 @@ if(FALSE){
     ggtitle("(d) Probability of positive trend", subtitle=paste0("n = ",1000))
   ggboth = ggarrange(gg1,gg3,gg2,gg4, nrow=2,ncol=2)
   ggboth
-  ggsave(paste0("accuracytest-full","-28800x19200.eps"),plot=ggboth, device=cairo_ps, width=28800,
+  ggsave(paste0("accuracytest-full","-28800x19200-rev.eps"),plot=ggboth, device=cairo_ps, width=28800,
          height=19200, units="px", dpi=1800, limitsize=FALSE)
   
   

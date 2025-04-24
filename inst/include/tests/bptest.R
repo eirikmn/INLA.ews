@@ -116,7 +116,7 @@ if(FALSE){
         # lprior = lprior + dnorm(theta[2],sd=10,log=TRUE)
         # lprior = lprior + dnorm(theta[3],sd=10,log=TRUE) #theta_a
         lprior = dgamma(exp(theta[1]), shape=1, rate=0.1) + theta[1]
-        lprior = lprior -theta[2] -2*log(1+exp(theta[2]))
+        lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
         lprior = lprior -theta[3] -2*log(1+exp(-theta[3])) 
         lprior = lprior + dnorm(theta[4],sd=10,log=TRUE) #bp
         #lprior = lprior + dnorm(theta[4],mean=0.5,sd=0.1, log=TRUE)
@@ -318,7 +318,7 @@ if(FALSE){
   library(ggpubr)
   ggboth = ggarrange(ggpy,ggp,nrow=1)
   ggboth
-  ggsave("breakpoint-plot-8x4-vague.eps",plot=ggboth, device=cairo_ps, width=8,
+  ggsave("breakpoint-plot-8x4-vague-rev.eps",plot=ggboth, device=cairo_ps, width=8,
          height=4)
   
 }

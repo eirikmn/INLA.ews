@@ -1,14 +1,37 @@
 #source("rgeneric.ews.ar1.new.R")
 if(FALSE){
   
-  lp333 <- function(theta) {return(
-    dnorm(theta[1], sd=10, log=TRUE) +
-      dnorm(theta[2], sd=10, log=TRUE) +
-      dnorm(theta[3], sd=10, log=TRUE))
+  
+    lp333 <- function(theta) {return(
+      dnorm(theta[1], sd=10, log=TRUE) +
+        dnorm(theta[2], sd=10, log=TRUE) +
+        dnorm(theta[3], sd=10, log=TRUE))
+    }
+    mylp <- function(theta) {
+      #dgamma(exp(theta[1]), 1, 5e-05, log=TRUE) + theta[1] + #vague
+      lprior = dgamma(exp(theta[1]), shape=1, rate=0.1, log=TRUE) + theta[1]
+      lprior = lprior -theta[2] -2*log(1+exp(-theta[2])) #which sign should be here?
+      lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
+      #dnorm(theta[2], sd=0.1, log=TRUE) +
+      #dnorm(theta[3], sd=0.1, log=TRUE))
+      return(lprior)
+    }
+  
+    mylp <- function(theta) {
+      lprior = dgamma(exp(theta[1]), shape=1, rate=0.1) + theta[1]
+      lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
+      lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
+      
+      return(lprior)
+    }
+  
+  
+  if(FALSE){
+    install_github("eirikmn/bremla")
   }
-  
   library(bremla)
-  
+  library(ggplot2)
+    
   data("events_rasmussen")
   #data("event_intervals")
   data("NGRIP_5cm")
@@ -77,9 +100,9 @@ if(FALSE){
     #print(plot(x=time[int],y=proxy[int],type="l",main=i))
   }
     print(ggy)
-    ggsave(paste0("events2.eps"),plot=ggy, device=cairo_ps, width=14,
-           height=4.7, limitsize=FALSE)
-    
+    # ggsave(paste0("events2.eps"),plot=ggy, device=cairo_ps, width=14,
+    #        height=4.7, limitsize=FALSE)
+    # 
   events = events_rasmussen$age
   abline(v=events,col="gray",lwd=0.8)
   abline(v=c(events[Clear_GS_onsets]),col="Blue",lwd=1.5)
@@ -138,9 +161,9 @@ if(FALSE){
   ameanrw2 = numeric(length(data_time))
   
   
-  # m = get("inla.models", inla.get.inlaEnv())
-  # m$latent$rw2$min.diff = NULL
-  # assign("inla.models", m, inla.get.inlaEnv())
+   m = get("inla.models", inla.get.inlaEnv())
+   m$latent$rw2$min.diff = NULL
+   assign("inla.models", m, inla.get.inlaEnv())
   
   #bypass = rep(FALSE, length(data_time))
   #bypass[2] = TRUE
@@ -158,19 +181,19 @@ if(FALSE){
     trend1 = time_normalized
     trend2 = time_normalized^2
     
-    
+    stepsizes = c(0.01,0.005, 0.001) #to battle numerical instability, iterate with decreasing stepsizes
     
     #plot(pproxy)
     cat("\nNo trend:\n",sep="")
-    res0 = inla.ews(data=pproxy,print.progress=TRUE, timesteps = ttime, log.prior=lp333)
+    res0 = inla.ews(data=pproxy,print.progress=TRUE, timesteps = ttime, stepsize=stepsizes, log.prior=mylp)
     #lines(res0$results$summary$trend$mean,col="blue",lwd=5)
     cat("\nLinear trend:\n",sep="")
-    res1 = inla.ews(data=data.frame(y=pproxy,trend1=trend1), timesteps = ttime,log.prior=lp333,
-                    formula=y~1+trend1,print.progress=TRUE)
+    res1 = inla.ews(data=data.frame(y=pproxy,trend1=trend1), timesteps = ttime,log.prior=mylp,
+                    formula=y~1+trend1, stepsize=stepsizes,print.progress=TRUE)
     #lines(res1$results$summary$trend$mean,col="red",lwd=5)
     cat("\nSquare trend:\n",sep="")
-    res2 = inla.ews(data=data.frame(y=pproxy,trend1=trend1,trend2=trend2), timesteps=ttime,log.prior=lp333,
-                    formula=y~1+trend1+trend2,print.progress=TRUE)
+    res2 = inla.ews(data=data.frame(y=pproxy,trend1=trend1,trend2=trend2), timesteps=ttime,log.prior=mylp,
+                    formula=y~1+trend1+trend2, stepsize=stepsizes,print.progress=TRUE)
     #lines(res2$results$summary$trend$mean,col="green",lwd=5)
     cat("\nRW2 trend:\n",sep="")
     # if(bypass[i]){
@@ -186,8 +209,8 @@ if(FALSE){
     m$latent$crw2$min.diff = NULL
     assign("inla.models", m, inla.get.inlaEnv())
     # resrw2 = inla.ews(data=data.frame(y=pproxy,idx=time_normalized*(n-1)+1), timesteps = ttime,
-    resrw2 = inla.ews(data=data.frame(y=pproxy,idx=ttime), timesteps = ttime,log.prior=lp333,
-                      formula=y~1+f(idx,model="crw2"),print.progress=TRUE)
+    resrw2 = inla.ews(data=data.frame(y=pproxy,idx=ttime), timesteps = ttime,log.prior=mylp,
+                      formula=y~1+f(idx,model="crw2"), stepsize=stepsizes,print.progress=TRUE)
     ##setting things back the way they were
     m$latent$crw2$min.diff = m.old  
     assign("inla.models", m, inla.get.inlaEnv())
@@ -315,15 +338,15 @@ if(FALSE){
   }#end for
   
   
-  rypdals = c("$p=0.2$", "$p=0.008$", "$-$","$-$","$p=0.13$", "$-$","$-$","$-$","$p=0.16$",
-              "$-$","$-$","$-$","$0.39$","$-$","$-$","$-$","$-$")
+  rypdals = c("$p=0.02$", "$p=0.008$", "$-$","$-$","$p=0.13$", "$-$","$-$","$-$","$p=0.16$",
+              "$-$","$-$","$-$","$p=0.39$","$-$","$-$","$-$","$-$")
   boers = c("$-$","$p<0.05$","$-$","$p<0.05$","$-$","$p<0.05$","$-$","$-$","$-$","$-$",
             "$p<0.05$","$-$","$p<0.05$","$p<0.05$","$p<0.05$","$-$","$-$")
-  for(i in 1:17){
+  endat = 17
+  for(i in 1:endat){
     cat(i," & ", round(bpos0[i],digits=4)," & ", round(bpos1[i],digits=4), " & ", round(bpos2[i],digits=4), " & ",
         round(bposrw2[i],digits=4), " & ", rypdals[i]," & ", boers[i]," \\\\ \n",sep="")
   }
-  endat = 17
   cat("Ensemble & ", round(mean(bpos0[1:endat]),digits=4), " & ", round(mean(bpos1[1:endat]),digits=4), " & ",
       round(mean(bpos2[1:endat]),digits=4)," & ",round(mean(bposrw2[1:endat]),digits=4)," & ",
       "$-$"," & ","$-$","\\\\ \n")
@@ -430,7 +453,7 @@ if(FALSE){
   }
   
   library(patchwork)
-  library(ggbreak)
+  # library(ggbreak)
   
   trendselect = "sq"
   
@@ -465,108 +488,139 @@ if(FALSE){
   
   ## Plot 1
   
+
+  inclGI1 = c(1:3)
+  inclGS1 = c(1:3)
+  
+  
   gg_phi_Lin1 <- ggplot(data=dfselect[[1]],aes(Time)) + 
     geom_ribbon(data=dfselect[[1]],aes(ymin=phi_Low,ymax=phi_Upp),col="red",fill="red",alpha=0.3,linewidth=0.5) +
     #geom_line(data=dfselect[[1]],aes(y=Phi1),col="gray")+
     geom_line(data=dfselect[[1]],aes(y=Phi),col="blue")+
-    theme_bw()+ labs(title="Lag-One Autocorrelation Evolution", subtitle= paste0(selectstr))+
+    theme_bw()+
     ylab("")+
-    xlab("")+
-    annotate(geom="text", x=mean(range(data=dfselect[[1]]$Time)), y=0.9, label=paste0("Event #",as.character(1)))+
-    annotate(geom="text", x=mean(range(data=dfselect[[1]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[1],2))))+
+    xlab("Time (yr b2k)")+
+    #annotate(geom="text", x=mean(range(data=dfselect[[1]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[1],2))))+
     theme(text = element_text(size = 20))
   for (i in 2:3) {
     gg_phi_Lin1<- gg_phi_Lin1 + 
       geom_ribbon(data=dfselect[[i]],aes(ymin=phi_Low,ymax=phi_Upp),col="red",fill="red",alpha=0.3,linewidth=0.5)+
       #geom_line(data=dfselect[[i]],aes(y=Phi1),col="gray")+
-      geom_line(data=dfselect[[i]],aes(x=Time,y=Phi),col="blue") +
-      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.9, label=paste0("Event #",as.character(i)))+
-      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[i],2))))
+      geom_line(data=dfselect[[i]],aes(x=Time,y=Phi),col="blue") 
+      
+      #annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[i],2))))
   }
   gg_phi_Lin1 <- gg_phi_Lin1 + 
-    geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue") +
-    geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")+
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 15)) +
-    coord_cartesian(ylim=c(0,1),xlim =c(max(dfselect[[3]]$Time)+100, min(dfselect[[1]]$Time)-50),expand = FALSE)#+
-  # theme(panel.grid.major = element_blank(), 
-  #        panel.grid.minor = element_blank())
+    geom_vline(xintercept=c(events[Clear_GS_onsets])[inclGS1],color ="blue") +
+    geom_vline(xintercept=c(events[Clear_GI_onsets])[inclGI1],color ="red")+
+    ylim(c(0,1))+
+    scale_x_continuous(breaks = seq(from=floor(min(dfselect[[1]]$Time) / 1000) * 1000,
+                       to=floor(max(dfselect[[3]]$Time) / 1000) * 1000,by=1000),
+                         #scales::pretty_breaks(n = 15), 
+                       trans="reverse",
+                       expand=c(0.01,0)
+                       )
+  gg_phi_Lin1 <- gg_phi_Lin1 +
+    annotate(geom="text", x=mean(range(data=dfselect[[1]]$Time)), 
+                                      y=0.9, label=paste0("Event #",as.character(1)))+
+    annotate(geom="text", x=mean(range(data=dfselect[[2]]$Time)), y=0.9, label=paste0("Event #",as.character(i)),)+
+  annotate(geom="text", x=mean(range(data=dfselect[[3]]$Time)), y=0.9, label=paste0("Event #",as.character(i)),)#+
   
-  ## Plot 2
+  
+  ### plot 2
+  
+  
+  
+  inclGI2 = c(4:11)
+  inclGS2 = c(4:11)
+  
   
   gg_phi_Lin2 <- ggplot(data=dfselect[[4]],aes(Time)) + 
     geom_ribbon(data=dfselect[[4]],aes(ymin=phi_Low,ymax=phi_Upp),col="red",fill="red",alpha=0.3,linewidth=0.5) +
-    #geom_line(data=dfselect[[4]],aes(y=Phi1),col="gray")+
     geom_line(data=dfselect[[4]],aes(y=Phi),col="blue")+
-    theme_bw()+ #labs(title="Linratic Detrending ")+
-    ylab(expression(paste(phi,"(t)")))+
-    xlab("")+#Time (yr b2k)")+
-    annotate(geom="text", x=mean(range(data=dfselect[[4]]$Time)), y=0.9, label=paste0("Event #",as.character(4)))+
-    annotate(geom="text", x=mean(range(data=dfselect[[4]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[4],2))))+
+    theme_bw()+
+    ylab("")+
+    xlab("")+
+    #annotate(geom="text", x=mean(range(data=dfselect[[1]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[1],2))))+
     theme(text = element_text(size = 20))
   for (i in 5:11) {
     gg_phi_Lin2<- gg_phi_Lin2 + 
       geom_ribbon(data=dfselect[[i]],aes(ymin=phi_Low,ymax=phi_Upp),col="red",fill="red",alpha=0.3,linewidth=0.5)+
-      #geom_line(data=dfselect[[i]],aes(x=Time,y=Phi1),col="gray") +
-      geom_line(data=dfselect[[i]],aes(x=Time,y=Phi),col="blue") +
-      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.9, label=paste0("Event #",as.character(i)))+
-      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[i],2))))
+      #geom_line(data=dfselect[[i]],aes(y=Phi1),col="gray")+
+      geom_line(data=dfselect[[i]],aes(x=Time,y=Phi),col="blue") 
+    
+    #annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[i],2))))
+  }
+  gg_phi_Lin2 <- gg_phi_Lin2 + 
+    geom_vline(xintercept=c(events[Clear_GS_onsets])[inclGS2],color ="blue") +
+    geom_vline(xintercept=c(events[Clear_GI_onsets])[inclGI2],color ="red")+
+    ylim(c(0,1))+
+    scale_x_continuous(breaks = seq(from=floor(min(dfselect[[4]]$Time) / 1000) * 1000,
+                                    to=floor(max(dfselect[[11]]$Time) / 1000) * 1000,by=1000),
+                       #scales::pretty_breaks(n = 15), 
+                       trans="reverse",
+                       expand=c(0.01,0)
+    )
+  for (i in 4:11) {
+    gg_phi_Lin2 <- gg_phi_Lin2 +
+      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.9, label=paste0("Event #",as.character(i)),)
   }
   
-  gg_phi_Lin2 <- gg_phi_Lin2 + 
-    geom_vline(xintercept=c(events[Clear_GS_onsets]),color ="Blue") +
-    geom_vline(xintercept=c(events[Clear_GI_onsets]),color ="red")+
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 15)) +
-    coord_cartesian(ylim=c(0,1),xlim =c(max(dfselect[[11]]$Time)+100, min(dfselect[[4]]$Time)-50),expand = FALSE)#+
-  # theme(panel.grid.major = element_blank(), 
-  #        panel.grid.minor = element_blank())
+  ### Plot 3
+  inclGI3 = c(12:17)
+  inclGS3 = c(12:17)
   
-  ## Plot 3
   
   gg_phi_Lin3 <- ggplot(data=dfselect[[12]],aes(Time)) + 
     geom_ribbon(data=dfselect[[12]],aes(ymin=phi_Low,ymax=phi_Upp),col="red",fill="red",alpha=0.3,linewidth=0.5) +
-    #geom_line(data=dfselect[[12]],aes(y=Phi1),col="gray")+
     geom_line(data=dfselect[[12]],aes(y=Phi),col="blue")+
-    theme_bw()+ #labs(title="Linratic Detrending ")+
-    ylab("")+#expression(paste(delta^18,"O (permil)")))+
-    xlab("Time (yr b2k)")+
-    annotate(geom="text", x=mean(range(data=dfselect[[12]]$Time)), y=0.9, label=paste("Event #",as.character(12)))+
-    annotate(geom="text", x=mean(range(data=dfselect[[12]]$Time)), y=0.8, label=paste("P(b>0) = ",as.character(round(bposselect[12],2))))+
+    theme_bw()+
+    ylab("")+
+    xlab("")+
+    labs(title="Lag-One Autocorrelation Evolution", subtitle= paste0(selectstr))+
+    #annotate(geom="text", x=mean(range(data=dfselect[[1]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[1],2))))+
     theme(text = element_text(size = 20))
   for (i in 13:17) {
     gg_phi_Lin3<- gg_phi_Lin3 + 
       geom_ribbon(data=dfselect[[i]],aes(ymin=phi_Low,ymax=phi_Upp),col="red",fill="red",alpha=0.3,linewidth=0.5)+
-      #geom_line(data=dfselect[[i]],aes(x=Time,y=Phi1),col="gray") +
-      geom_line(data=dfselect[[i]],aes(x=Time,y=Phi),col="blue") +
-      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.9, label=paste0("Event #",as.character(i)))+
-      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[i],2))))
+      #geom_line(data=dfselect[[i]],aes(y=Phi1),col="gray")+
+      geom_line(data=dfselect[[i]],aes(x=Time,y=Phi),col="blue") 
+    
+    #annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.8, label=paste0("P(b>0) = ",as.character(round(bposselect[i],2))))
   }
-  
   gg_phi_Lin3 <- gg_phi_Lin3 + 
-    geom_vline(xintercept=c(events[Clear_GS_onsets[12:17]]),color ="Blue") +
-    geom_vline(xintercept=c(events[Clear_GI_onsets[12:17]]),color ="red")+
-    scale_x_continuous(breaks = scales::pretty_breaks(n = 15)) +
-    coord_cartesian(ylim=c(0,1),xlim =c(max(dfselect[[17]]$Time)+100, min(dfselect[[12]]$Time)-50),expand = FALSE)#+
-  #  theme(panel.grid.major = element_blank(), 
-  #       panel.grid.minor = element_blank())
-  
-  
-  
-  
-  
-  
-  gg_final_Phi = gg_phi_Lin1/gg_phi_Lin2/gg_phi_Lin3
-  
-  
+    geom_vline(xintercept=c(events[Clear_GS_onsets])[inclGS3],color ="blue") +
+    geom_vline(xintercept=c(events[Clear_GI_onsets])[inclGI3],color ="red")+
+    ylim(c(0,1))+
+    scale_x_continuous(breaks = seq(from=floor(min(dfselect[[12]]$Time) / 1000) * 1000,
+                                    to=floor(max(dfselect[[17]]$Time) / 1000) * 1000,by=1000),
+                       #scales::pretty_breaks(n = 15), 
+                       trans="reverse",
+                       expand=c(0.01,0)
+    )
+  for (i in 12:16) {
+    gg_phi_Lin3 <- gg_phi_Lin3 +
+      annotate(geom="text", x=mean(range(data=dfselect[[i]]$Time)), y=0.9, label=paste0("Event #",as.character(i)),)
+  }
+  gg_phi_Lin3 <- gg_phi_Lin3 +
+    annotate(geom="text", x=mean(range(data=dfselect[[17]]$Time))-200, y=0.9, label=paste0("Event #",as.character(17)),)
+  # print(gg_phi_Lin3)
+  # 
+  # ggphis = ggarrange(gg_phi_Lin3,gg_phi_Lin2,gg_phi_Lin1,nrow=3, heights = c(1.5,1,1))
+  # print(ggphis)
+  # library(gridExtra)
+  # ggphis2=grid.arrange(ggphis, top = "Main Title")
+  # print(ggphis2)
+  # 
+  gg_final_Phi = gg_phi_Lin3/gg_phi_Lin2/gg_phi_Lin1
+  #
   print(gg_final_Phi) ########  To Print
   
-#  ggsave(paste0("AC1_RW2_evolution.eps"),plot=gg_final_Phi, device=cairo_ps, width=28800,
- #        height=19000, units="px", dpi=1800, limitsize=FALSE)
-  ggsave(paste0("AC1_RW2_evolution.eps"),plot=gg_final_Phi, device=cairo_ps, width=14,
+  #  ggsave(paste0("AC1_RW2_evolution.eps"),plot=gg_final_Phi, device=cairo_ps, width=28800,
+  #        height=19000, units="px", dpi=1800, limitsize=FALSE)
+  ggsave(paste0("AC1_RW2_evolution-rev.eps"),plot=gg_final_Phi, device=cairo_ps, width=14,
          height=10.5, limitsize=FALSE)
-#  ggsave(paste0("AC1","RW2","_evolution.eps"),plot=plotlist[[3]], device=cairo_ps, width=8,
-#         height=6, units="cm")
-  #ggsave("breakpoint-plot-8x4-vague.eps",plot=ggboth, device=cairo_ps, width=8,
-  #       height=6)
+  
   
   ## trend
   
@@ -709,7 +763,7 @@ if(FALSE){
   
   #ggsave("alltrendplotsc.eps",plot=ggar, device=cairo_ps, width=43200,
   #       height=57600, units="px", dpi=3600, limitsize=FALSE) c(14,10.5)
-  ggsave("alltrendplotsc2.eps",plot=ggar, device=cairo_ps, width=14,
+  ggsave("alltrendplotsc2-rev.eps",plot=ggar, device=cairo_ps, width=14,
          height=18.5, limitsize=FALSE)
   
   #ggsave(paste0("AC1",selectstr,"_evolution.eps"),plot=gg_final_Phi, device=cairo_ps, width=8,
@@ -740,7 +794,45 @@ if(FALSE){
   
   print(ggallb)
   
-  ggsave("ggallb.eps",plot=ggallb, device=cairo_ps, width=15,
+  ggsave("ggallb-rev.eps",plot=ggallb, device=cairo_ps, width=15,
+         height=18.5, limitsize=FALSE)
+  
+  #####
+  ## adjust shaded area ##
+  #####
+  
+  margplots = list()
+  ggp0 = ggplot() + theme_bw() + xlab("b") + ylab("Density") +
+    theme(text = element_text(size = 20)) +
+    geom_vline(aes(xintercept=0), linewidth=1.2, linetype="dotted")
+  for(i in 1:17 ){
+    ggd0 = data.frame(bx = rres2[[i]]$results$marginals$b[,1], by=rres2[[i]]$results$marginals$b[,2])
+    
+    #bmargtemp = rres2[[i]]$results$marginals$b
+    #inla.qmarginal(0,bmargtemp)
+    
+    ggdp = data.frame(lowerq=rres2[[i]]$results$summary$b$quant0.025, 
+                      lower=0,
+                      upperq=rres2[[i]]$results$summary$b$quant0.975, 
+                      upper=Inf,
+                      zero=0,
+                      bpos=rres2[[i]]$results$summary$b$prob_positive)
+    ggdribbon = data.frame(x=ggd0$bx[ggd0$bx>=ggdp$lower & ggd0$bx <=ggdp$upper], 
+                           ymax=ggd0$by[ggd0$bx>=ggdp$lower & ggd0$bx <=ggdp$upper],
+                           ymin=numeric(sum(ggd0$bx>=ggdp$lower & ggd0$bx <=ggdp$upper)))
+    
+    ggmarg = ggp0 + geom_ribbon(data=ggdribbon,mapping=aes(x=x,ymin=ymin,ymax=ymax),
+                                fill="red", alpha=0.3)+
+      geom_line(data=ggd0,mapping=aes(x=bx,y=by)) +
+      ggtitle(paste0("Event # ",i), subtitle=paste0("P(b>0) = ",round(ggdp$bpos,digits=3)))
+    margplots[[i]] = ggmarg
+  }
+  
+  ggallb2 = ggarrange(plotlist=margplots,ncol=4,nrow=5)
+  
+  print(ggallb)
+  
+  ggsave("ggallb3-rev.eps",plot=ggallb2, device=cairo_ps, width=15,
          height=18.5, limitsize=FALSE)
   
   ####
@@ -941,8 +1033,9 @@ if(FALSE){
   
   
   ggabsall = ggarrange(ggff,ggss,ggtt,nrow=3)
+  ggabsall = ggarrange(ggtt,ggss,ggff,nrow=3)
   
-  ggsave("ggalltrends.eps",plot=ggabsall, device=cairo_ps, width=22,
+  ggsave("ggalltrends-rev.eps",plot=ggabsall, device=cairo_ps, width=22,
          height=22, limitsize=FALSE)
   
   ####
@@ -975,7 +1068,7 @@ if(FALSE){
   
   print(ggallb)
   
-  ggsave("ggallb2.eps",plot=ggallb, device=cairo_ps, width=22,
+  ggsave("ggallb1-rev.eps",plot=ggallb, device=cairo_ps, width=22,
          height=18, limitsize=FALSE)
 
 }

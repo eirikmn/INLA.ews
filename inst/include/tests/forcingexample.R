@@ -234,7 +234,7 @@ if(FALSE){
   ggboth = ggarrange(ggarrange(ggy0,ggm,ncol=2),ggp,nrow=2, ncol=1)
   print(ggboth)
   
-  ggsave("forcingfit-both-14x10.eps",plot=ggboth, device=cairo_ps, width=14,
+  ggsave("forcingfit-both-14x10-rev.eps",plot=ggboth, device=cairo_ps, width=14,
          height=10)
   ## hvorfor blir forcing response annerledes?
   

@@ -99,9 +99,12 @@ rgeneric.ar1 = function(
       lprior = my.prior(theta)
     }else{
       params = interpret.theta()
-      lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
-      lprior = lprior + dnorm(theta[2],sd=1,log=TRUE)
-      lprior = lprior + dnorm(theta[3],sd=1,log=TRUE) #theta_a
+      #lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+      #lprior = lprior + dnorm(theta[2],sd=1,log=TRUE)
+      #lprior = lprior + dnorm(theta[3],sd=1,log=TRUE) #theta_a
+      lprior = dgamma(exp(theta[1]), shape=1, rate=0.1, log=TRUE) + theta[1]
+      lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
+      lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
       
     }
     
@@ -309,12 +312,16 @@ rgeneric.ar1.forcing = function(
       lprior = my.prior(theta)
     }else{
       params = interpret.theta()
-      lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
+      #lprior = INLA::inla.pc.dprec(params$kappa_eps, u=1, alpha=0.01, log=TRUE) + log(params$kappa_eps) #kappa
       #lprior = lprior + dnorm(theta[2],log=TRUE) #theta_b
-      b=params$b; ra = 0; rb=1
-      lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
-      #lprior = lprior -log(rb-ra) + log(b-ra)+log(rb-b) -log(rb-ra)
-      lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
+      #b=params$b; ra = 0; rb=1
+      #lprior = -log(rb-ra)-theta[2]-log(1+exp(-theta[2]))
+      
+      #lprior = lprior + dnorm(theta[3],sd=3,log=TRUE) #theta_a
+      lprior = dgamma(exp(theta[1]), shape=1, rate=0.1,log=TRUE) + theta[1]
+      lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
+      lprior = lprior -theta[3] -2*log(1+exp(-theta[3]))
+      
       lprior = lprior + INLA::inla.pc.dprec(params$kappa_f, u=1, alpha=0.01, log=TRUE) + log(params$kappa_f) #kappa_f
       lprior = lprior + dnorm(theta[5],sd=3,log=TRUE) #F0
     }
