@@ -91,6 +91,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   tid.start = proc.time()[[3]]
   
   inla.ews.call = sys.call(which=1)
+  
   if(sum(is.na(forcing))>0) stop("Forcing contains NA values")
   
   old.digits=getOption("digits")
@@ -99,8 +100,15 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   }
   
   inla.options = set.options(inla.options, inla.options.default()) #fill missing default settings
+  
+  
   inla.options$num.threads=num.threads
-  inla.options$control.compute = list(config=TRUE)
+  
+  if(is.null(inla.options$control.compute)){
+    inla.options$control.compute = list(config=TRUE)
+  }
+  
+  
   
   if(is.null(dim(data))){
     n = length(data)
@@ -133,7 +141,7 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   }
   
   
-
+  
   if(print.progress){
     cat("Setting up rgeneric model..\n",sep="")
   }
@@ -158,17 +166,44 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
           stop("Could not find package directory, please make sure that INLA.climate is installed within one of the libraries displayed by '.libPaths()'.")
         }
         rgen_model <- INLA::inla.cgeneric.define(model = "inla_cgeneric_timedep_forcing",
-                                             #shlib = "src/cgeneric.so", 
-                                             #shlib = "libs/INLA.ews.so", 
-                                             shlib = cscript.path, 
-                                             n = n, debug=FALSE,
-                                             time=as.numeric(time_normalized), 
-                                             forcing=as.numeric(forcing)
+                                                 #shlib = "src/cgeneric.so", 
+                                                 #shlib = "libs/INLA.ews.so", 
+                                                 shlib = cscript.path, 
+                                                 n = n, debug=FALSE,
+                                                 time=as.numeric(time_normalized), 
+                                                 forcing=as.numeric(forcing)
         )
       }
       
     }else{
       rgen_model = INLA::inla.rgeneric.define(rgeneric.ar1,n=n,
+                                              time=time_normalized,
+                                              my.log.prior=log.prior)
+    }
+  }else if(tolower(model) %in% c("ar2","ar(2)","2")){
+    if(length(forcing)>0){
+      require(INLA.ews, quietly=TRUE)
+      
+      if(!do.cgeneric){
+        # rgen_model = INLA::inla.rgeneric.define(rgeneric.ar2.forcing,n=n,
+        #                                         time=time_normalized,
+        #                                         my.log.prior=log.prior,
+        #                                         forcing=forcing
+        # )
+        
+        rgen_model = INLA::inla.rgeneric.define(rgeneric.ar2.forcing,n=n,
+                                                time=seq(from=0,to=1,length.out=n),
+                                                #time=time_normalized, #sometimes different results if the line above is uncommented instead
+                                                my.log.prior=log.prior,
+                                                forcing=forcing
+        )
+        
+      }else{
+        stop("cgeneric is not yet implemented for the AR(2) model.")
+      }
+      
+    }else{
+      rgen_model = INLA::inla.rgeneric.define(rgeneric.ar2,n=n,
                                               time=time_normalized,
                                               my.log.prior=log.prior)
     }
@@ -196,11 +231,8 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   
   
   
-  
-  
-  
-   # r = INLA::inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
-   #          verbose=FALSE,num.threads = 1)
+  # r = INLA::inla(formula,data=df,family="gaussian",control.family = list(initial=12,fixed=TRUE),
+  #          verbose=FALSE,num.threads = 1)
   
   nstepsizes = length(stepsize)
   for(i in 1:nstepsizes){
@@ -237,26 +269,35 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       cat("Completed INLA optimization in ",format(r$cpu.used[4],digits=3)," seconds..\n",sep="")
     }
   }
-    
+  
   object = list(formula=formula2,inlafit=r,.args=list(data=data,
-                                                     forcing=forcing,
-                                                     call = inla.ews.call,
-                                                     inladata=df,
-                                                     model=model,
-                                                     timesteps=timesteps,
-                                                     time_normalized=time_normalized,
-                                                     inputformula = formula,
-                                                     #intercept=intercept,
-                                                     compute.mu=compute.mu,
-                                                     inla.options=inla.options,
-                                                     memory.true=memory.true))
+                                                      forcing=forcing,
+                                                      call = inla.ews.call,
+                                                      inladata=df,
+                                                      model=model,
+                                                      timesteps=timesteps,
+                                                      time_normalized=time_normalized,
+                                                      inputformula = formula,
+                                                      #intercept=intercept,
+                                                      compute.mu=compute.mu,
+                                                      inla.options=inla.options,
+                                                      memory.true=memory.true))
+  
+  
+  
   class(object) = "inla.ews"
   if(print.progress){
     cat("Collecting results and perform transformation to user scaling..\n",sep="")
   }
   time.start.gather = Sys.time()
-  object = resultgather(object, nsims=nsims,print.progress=print.progress)
+  if(tolower(model) %in% c("ar1", "ar(1)", "1")){
+    object = resultgather(object, nsims=nsims,print.progress=print.progress)
+  }else if(tolower(model) %in% c("ar2", "ar(2)", "2")){
+    object = resultgather_ar2(object, nsims=nsims,print.progress=print.progress)
+  }
+  
   time.gather = difftime(Sys.time(), time.start.gather,units="secs")[[1]]
+  
   
   if(print.progress){
     cat("Results collected in ", format(time.gather,digits=3)," seconds..\n",sep="")
@@ -278,122 +319,4 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
   }
   options(digits=old.digits)
   return(object)
-}
-
-if(FALSE){
-  n=300
-  sigma1 = 1
-  time=1:n
-  a = 0.6
-  b = 0.35/n
-  Hs = a+b*time
-  F0 = -3
-  sigmaf=0.1
-  sigma = 1.2
-  #Hs = rep(0.75,n)
-  
-  sigmat = sigmamaker(n,sigma,Hs)
-  sigmachol = chol(sigmat)
-  noise = sigmachol%*%rnorm(n)
-  forcing = arima.sim(model=list(ar=c(0.9)),n)+1:n/n*10
-  z = sigmaf*(forcing+F0)
-  
-  struct = (1:n-0.5)^(Hs-3/2)
-  muvek=numeric(n)
-  for(i in 1:n){
-    muvek[i] = rev(struct[1:i])%*%z[1:i]
-  }
-  y=muvek+noise
-  data = y
-  forcing=z#numeric(0)
-  
-  object = inla.ews(data,forcing,model="ar1",inla.options=inla.options,
-                    print.progress=TRUE)
-  ####
-  if(TRUE){
-    plot(object$results$summary$H$median,type="l",ylim=c(0.5,1))
-    lines(object$results$summary$H$hpd0.95lower,col="red")
-    lines(object$results$summary$H$hpd0.95upper,col="red")
-    lines(a+b*1:n,col="gray")
-  }
-}
-
-
-if(FALSE){
-  
-  n=50
-  
-  sigma1=1; kappa1=1/sigma1^2
-  a=0.2
-  b=0.7/n
-  F0 = 3
-  sigmaf = 2
-  time = 1:n
-  phis = a+b*time
-  s=numeric(n)
-  s[1] = rnorm(1,mean=0,sd=sigma1)
-  for(i in 2:n){
-    s[i] = rnorm(1, mean=phis[i]*s[i-1],sd=sigma1)
-  }
-  
-  z = arima.sim(model=list(ar=c(0.95)),n=n,sd=sqrt(1-0.95^2))+1:n/n*7
-  zz = sigmaf*(F0+z)
-  
-  lambdas = phis-1
-  
-  struct = exp(lambdas*(1:n)-0.5)
-  muvek=numeric(n)
-  for(i in 1:n){
-    muvek[i] = rev(struct[1:i])%*%zz[1:i]
-  }
-  y = s + muvek
-  
-  data=s
-  forcing=numeric(0)
-  model="ar1"
-  
-  # radius = 30
-  # phiL=acf(y[1:radius],plot=FALSE)$acf[2]
-  # phiH=acf(y[(n-radius):n],plot=FALSE)$acf[2]
-  # bhat = (phiH-phiL)/n
-  # ahat = phiL-bhat
-  # varhat = (var(y[1:radius])*(1-phiL^2)+var(y[(n-radius):n])*(1-phiH^2))/2
-  # 
-  # theta_sigma = log(1/varhat)
-  # theta_b = log((1+bhat)/(1-bhat))
-  # theta_a = log( (min(b*time)+ahat)/(1-max(b*time)-ahat) )
-  # initheta = c(theta_sigma,theta_b,theta_a)
-  # if(length(forcing)>0) initheta=c(initheta,c(0,0))
-  # #inla.options=list(control.mode=list(theta=initheta,restart=TRUE))
-  # 
-  # object = inla.ews(data,forcing,model=model,inla.options=inla.options,
-  #                   modecontrol = list(theta=initheta,restart=TRUE))
-  object = inla.ews(data,forcing,model=model,inla.options=inla.options)
-  ####
-  if(TRUE){
-    plot(object$results$summary$phi$median,type="l",ylim=c(0,1))
-    lines(object$results$summary$phi$hpd0.95lower,col="red")
-    lines(object$results$summary$phi$hpd0.95upper,col="red")
-    lines(a+b*1:n,col="gray")
-    
-  }
-  stop("stopper her")
-  
-  
-  par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
-  plot(y,type="l",xlab="Time",ylab="Observation",main=paste0("varying-memory: a=",a,", b*n=",b*n))
-  lines(muvek,col="red")
-  
-  df = data.frame(idy=1:n,y=y,time=time)
-  library(INLA)
-  
-  rgen_model = inla.rgeneric.define(rgeneric.ar1.varphi.forcing,n=n,time=df$time,forcing=z)
-  formula = y~-1+f(idy,model=rgen_model)
-  r = inla(formula,data=df,control.family = list(initial=12,fixed=TRUE))
-  summary(r)
-  
-  
-  truevals = list(a=a,b=b,phis=phis,sigma=sigma,sigmaf=sigmaf,F0=F0)
-  resultfunc(r,time,truevals=truevals)
-  
 }

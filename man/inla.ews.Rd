@@ -27,7 +27,7 @@ inla.ews(
 \item{forcing}{Numeric describing potential forcing to the system. If no forcing
 is included, set to \code{numeric(0)} (default).}
 
-\item{formula}{Formula describing the linear predictor (NOT YET IMPLEMENTED)}
+\item{formula}{Formula describing the linear predictor}
 
 \item{model}{Character string describing which noise model should be used.
 Currently only supports \code{"ar1"} (default).}

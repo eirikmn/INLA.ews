@@ -6,7 +6,7 @@
 #'
 #' @param cmd Vector containing list of function names necessary for the rgeneric model.
 #' @param theta Vector describing the hyperparameters in internal scaling.
-#' @importFrom stats dnorm
+#' @importFrom stats dnorm dgamma
 rgeneric.ar1 = function(
     cmd = c("graph", "Q","mu", "initial", "log.norm.const", "log.prior", "quit"),
     theta = NULL)
@@ -136,7 +136,7 @@ rgeneric.ar1 = function(
 #' @param theta Vector describing the hyperparameters in internal scaling.
 #'
 #'
-#' @importFrom stats dnorm
+#' @importFrom stats dnorm dgamma
 #' @importFrom Rcpp sourceCpp
 #' @useDynLib INLA.ews, .registration = TRUE
 rgeneric.ar1.forcing = function(

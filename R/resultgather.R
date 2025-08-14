@@ -13,7 +13,7 @@
 #' @seealso \code{\link{inla.ews}}
 #' @keywords INLA early warning signal summary 
 #' @importFrom stats density dnorm sd
-#' @importFrom matrixStats rowMedians rowSds
+#' @importFrom matrixStats rowMedians rowSds rowQuantiles rowSums2
 resultgather <- function(object,nsims=10000,print.progress){
   n = nrow(object$.args$inladata)
   #n = length(object$.args$data)
@@ -182,13 +182,16 @@ resultgather <- function(object,nsims=10000,print.progress){
       
     }
     
-    for(i in 1:n){
-      dens0 = density(trendsamps[i,]);dens = data.frame(x=dens0$x,y=dens0$y)
-      zm = INLA::inla.zmarginal(dens,silent=TRUE)
-      trendmean[i] = zm$mean
-      trendupper[i] = zm$quant0.025
-      trendlower[i] = zm$quant0.975
-    }
+    # for(i in 1:n){
+    #   dens0 = density(trendsamps[i,]);dens = data.frame(x=dens0$x,y=dens0$y)
+    #   zm = INLA::inla.zmarginal(dens,silent=TRUE)
+    #   trendmean[i] = zm$mean
+    #   trendupper[i] = zm$quant0.025
+    #   trendlower[i] = zm$quant0.975
+    # }
+    trendmean = rowSums2(trendsamps)
+    trendlower = rowQuantiles(trendsamps, probs=0.025)
+    trendupper = rowQuantiles(trendsamps, probs=0.975)
     
   }
   if(print.progress){
