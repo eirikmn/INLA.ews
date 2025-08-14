@@ -36,36 +36,76 @@ print.inla.ews = function(x,digits=4L,...){
   names(cpu) = c("Running INLA","Post processing","Total")
   print(cpu)
   
-  hypers = matrix(round(
-    c(x$results$summary$a$mean,x$results$summary$a$sd,
-      x$results$summary$a$quant0.025,x$results$summary$a$quant0.5,
-      x$results$summary$a$quant0.975,
-      x$results$summary$b$mean,x$results$summary$b$sd,
-      x$results$summary$b$quant0.025,x$results$summary$b$quant0.5,
-      x$results$summary$b$quant0.975,
-      x$results$summary$sigma$mean,x$results$summary$sigma$sd,
-      x$results$summary$sigma$quant0.025,x$results$summary$sigma$quant0.5,
-      x$results$summary$sigma$quant0.975
-    ),digits=digits), nrow=3,byrow=TRUE)
-  
-  colnames(hypers) = c("mean","sd","0.025quant","0.5quant","0.975quant")
-  rownames = c("a","b","sigma")
-  if(length(x$.args$forcing)>0){
-    is.forcing=TRUE
-    rownames = c(rownames,c("sigma_f","F0"))
-    hypers = rbind(hypers, round(c(
-      x$results$summary$sigmaf$mean,x$results$summary$sigmaf$sd,
-      x$results$summary$sigmaf$quant0.025,x$results$summary$sigmaf$quant0.5,
-      x$results$summary$sigmaf$quant0.975),digits=digits
-    ))
-    hypers = rbind(hypers, round(c(
-      x$results$summary$F0$mean,x$results$summary$F0$sd,
-      x$results$summary$F0$quant0.025,x$results$summary$F0$quant0.5,
-      x$results$summary$F0$quant0.975),digits=digits
-    ))
-  }else{
-    is.forcing=FALSE
+  if(tolower(x$.args$model) %in% c("ar1", "ar(1)", "1")){
+    hypers = matrix(round(
+      c(x$results$summary$a$mean,x$results$summary$a$sd,
+        x$results$summary$a$quant0.025,x$results$summary$a$quant0.5,
+        x$results$summary$a$quant0.975,
+        x$results$summary$b$mean,x$results$summary$b$sd,
+        x$results$summary$b$quant0.025,x$results$summary$b$quant0.5,
+        x$results$summary$b$quant0.975,
+        x$results$summary$sigma$mean,x$results$summary$sigma$sd,
+        x$results$summary$sigma$quant0.025,x$results$summary$sigma$quant0.5,
+        x$results$summary$sigma$quant0.975
+      ),digits=digits), nrow=3,byrow=TRUE)
+    
+    colnames(hypers) = c("mean","sd","0.025quant","0.5quant","0.975quant")
+    rownames = c("a","b","sigma")
+    if(length(x$.args$forcing)>0){
+      is.forcing=TRUE
+      rownames = c(rownames,c("sigma_f","F0"))
+      hypers = rbind(hypers, round(c(
+        x$results$summary$sigmaf$mean,x$results$summary$sigmaf$sd,
+        x$results$summary$sigmaf$quant0.025,x$results$summary$sigmaf$quant0.5,
+        x$results$summary$sigmaf$quant0.975),digits=digits
+      ))
+      hypers = rbind(hypers, round(c(
+        x$results$summary$F0$mean,x$results$summary$F0$sd,
+        x$results$summary$F0$quant0.025,x$results$summary$F0$quant0.5,
+        x$results$summary$F0$quant0.975),digits=digits
+      ))
+    }else{
+      is.forcing=FALSE
+    }
+  }else if(tolower(x$.args$model) %in% c("ar2", "ar(2)", "2") ){
+    hypers = matrix(round(
+      c(x$results$summary$a_phi$mean,x$results$summary$a_phi$sd,
+        x$results$summary$a_phi$quant0.025,x$results$summary$a_phi$quant0.5,
+        x$results$summary$a_phi$quant0.975,
+        x$results$summary$b_phi$mean,x$results$summary$b_phi$sd,
+        x$results$summary$b_phi$quant0.025,x$results$summary$b_phi$quant0.5,
+        x$results$summary$b_phi$quant0.975,
+        x$results$summary$a_rho$mean,x$results$summary$a_rho$sd,
+        x$results$summary$a_rho$quant0.025,x$results$summary$a_rho$quant0.5,
+        x$results$summary$a_rho$quant0.975,
+        x$results$summary$b_rho$mean,x$results$summary$b_rho$sd,
+        x$results$summary$b_rho$quant0.025,x$results$summary$b_rho$quant0.5,
+        x$results$summary$b_rho$quant0.975,
+        x$results$summary$sigma$mean,x$results$summary$sigma$sd,
+        x$results$summary$sigma$quant0.025,x$results$summary$sigma$quant0.5,
+        x$results$summary$sigma$quant0.975
+      ),digits=digits), nrow=5,byrow=TRUE)
+    
+    colnames(hypers) = c("mean","sd","0.025quant","0.5quant","0.975quant")
+    rownames = c("a_phi","b_phi", "a_rho", "b_rho","sigma")
+    if(length(x$.args$forcing)>0){
+      is.forcing=TRUE
+      rownames = c(rownames,c("sigma_f"))
+      hypers = rbind(hypers, round(c(
+        x$results$summary$sigmaf$mean,x$results$summary$sigmaf$sd,
+        x$results$summary$sigmaf$quant0.025,x$results$summary$sigmaf$quant0.5,
+        x$results$summary$sigmaf$quant0.975),digits=digits
+      ))
+      # hypers = rbind(hypers, round(c(
+      #   x$results$summary$F0$mean,x$results$summary$F0$sd,
+      #   x$results$summary$F0$quant0.025,x$results$summary$F0$quant0.5,
+      #   x$results$summary$F0$quant0.975),digits=digits
+      # ))
+    }else{
+      is.forcing=FALSE
+    }
   }
+  
   rownames(hypers)=rownames
   
   if(length(x$.args$forcing)>0){

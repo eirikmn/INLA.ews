@@ -63,12 +63,23 @@ plot.inla.ews <- function(x,
   if(!is.null(x$results) ){
     
     if(plot.options$plot.hyper){
+      margnames = names(x$results$marginals)
       for(i in 1:length(x$results$marginals)){
         figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
-        LOW = x$results$summary[[i]]$quant0.025
-        UPP = x$results$summary[[i]]$quant0.975
-        intx = x$results$marginals[[i]]$x[ x$results$marginals[[i]]$x < UPP & x$results$marginals[[i]]$x > LOW]
-        inty = x$results$marginals[[i]]$y[ x$results$marginals[[i]]$x < UPP & x$results$marginals[[i]]$x > LOW]
+        LOW = x$results$summary[[margnames[i]]]$quant0.025
+        UPP = x$results$summary[[margnames[i]]]$quant0.975
+        
+        margi = x$results$marginals[[margnames[i]]]
+        margix = margi[,1]
+        margiy = margi[,2]
+        intx = margix[ margix <= UPP & margix >= LOW]
+        inty = margiy[ margix <= UPP & margix >= LOW]
+        
+        # mm = margic
+        # bb=INLA::inla.zmarginal(mm,silent=TRUE)
+        
+        #intx = x$results$marginals[[i]]$x[ x$results$marginals[[i]]$x < UPP & x$results$marginals[[i]]$x > LOW]
+        #inty = x$results$marginals[[i]]$y[ x$results$marginals[[i]]$x < UPP & x$results$marginals[[i]]$x > LOW]
         ggp = ggplot()  + theme_bw() +
           xlab(names(x$results$marginal)[i]) + ylab("Density") + 
           ggtitle(paste0("Posterior distribution: ",names(x$results$marginals)[i])) +
@@ -76,7 +87,7 @@ plot.inla.ews <- function(x,
                       mapping=aes(x=.data$intx,ymin=.data$lower,ymax=.data$inty), color="red",fill="red",alpha=0.3,linewidth=0) +
           geom_segment(aes(x=LOW,xend=LOW,y=0,yend=inty[1]),col="red",linewidth=1.) +
           geom_segment(aes(x=UPP,xend=UPP,y=0,yend=inty[length(inty)]),col="red",linewidth=1.) +
-          geom_line(data=x$results$marginals[[i]],mapping=aes(x=.data$x,y=.data$y), linewidth=1.2)
+          geom_line(data=x$results$marginals[[margnames[i]]],mapping=aes(x=.data$x,y=.data$y), linewidth=1.2)
         
         print(ggp)
         if(postscript || pdf){
@@ -90,7 +101,7 @@ plot.inla.ews <- function(x,
   }
 
   
-  if(plot.options$plot.forced && !is.null(x$results$summary$alltrend)){
+  if(plot.options$plot.forced && max(abs(x$results$summary$alltrend$mean)) > 0.0001){
     figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
     
     ggd = data.frame(y=x$.args$inladata$y, time=x$.args$timesteps, mean=x$results$summary$alltrend$mean, 
@@ -102,25 +113,25 @@ plot.inla.ews <- function(x,
     #
     ## EMN: KOMT HIT
     #
-    
-    par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
-    ggd = data.frame(y=x$.args$data,time=x$.args$inladata$time,
-                     mean=x$forced$mean)
-    if(!is.null(x$forced$quant0.025)){
-      ggd$lower = x$forced$quant0.025
-      ggd$upper = x$forced$quant0.975
-    }
-    gg = ggplot(ggd,aes(.data$time)) + theme_bw()+ 
-      xlab("Time")+ylab("Observations")+
-      labs(title="Forced response")+
-      geom_line(aes(y=.data$y),color="gray",size=0.7,alpha=0.9)
-    if(!is.null(x$forced$quant0.025)){
-      #gg = gg + geom_line(aes(y=.data$lower),col="")
-      gg = gg + geom_ribbon(aes(ymin=.data$lower,ymax=.data$upper),color="red",
-                            fill="red",alpha=0.3,size=0.9)
-    }
-    gg = gg + geom_line(aes(y=.data$mean),color="blue",size=1.1)
-    print(gg)
+    # 
+    # par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
+    # ggd = data.frame(y=x$.args$data,time=x$.args$inladata$time,
+    #                  mean=x$forced$mean)
+    # if(!is.null(x$forced$quant0.025)){
+    #   ggd$lower = x$forced$quant0.025
+    #   ggd$upper = x$forced$quant0.975
+    # }
+    # gg = ggplot(ggd,aes(.data$time)) + theme_bw()+ 
+    #   xlab("Time")+ylab("Observations")+
+    #   labs(title="Forced response")+
+    #   geom_line(aes(y=.data$y),color="gray",size=0.7,alpha=0.9)
+    # if(!is.null(x$forced$quant0.025)){
+    #   #gg = gg + geom_line(aes(y=.data$lower),col="")
+    #   gg = gg + geom_ribbon(aes(ymin=.data$lower,ymax=.data$upper),color="red",
+    #                         fill="red",alpha=0.3,size=0.9)
+    # }
+    # gg = gg + geom_line(aes(y=.data$mean),color="blue",size=1.1)
+    # print(gg)
     if(postscript || pdf){
       if (names(dev.cur()) != "null device") {
         dev.off()
@@ -130,7 +141,7 @@ plot.inla.ews <- function(x,
   
   if(plot.options$plot.memory){
     if(tolower(x$.args$model) %in% c("ar1","ar(1)","1","ar1g")){
-      plot.df = data.frame(time=x$.args$inladata$time,
+      plot.df = data.frame(time=x$.args$timesteps,
                            mean=x$results$summary$phi$mean,
                            median=x$results$summary$phi$median,
                            lower=x$results$summary$phi$hpd0.95lower,
@@ -145,7 +156,16 @@ plot.inla.ews <- function(x,
                            upper=x$results$summary$H$hpd0.95upper)
       ylim=c(0.5,1)
       ylab="Hurst exponent: H"
+    }else if(tolower(x$.args$model) %in% c("ar1","ar(1)","1","ar1g")){
+      plot.df = data.frame(time=x$.args$timesteps,
+                           mean=x$results$summary$phi$mean,
+                           median=x$results$summary$phi$median,
+                           lower=x$results$summary$phi$hpd0.95lower,
+                           upper=x$results$summary$phi$hpd0.95upper)
+      ylim=c(0,1)
+      ylab=expression(paste("lag-one correlation: ",phi))
     }
+      
     figure.count <- new.plot(postscript,pdf,prefix,figure.count,...) +1
     par(mfrow=c(1,1),mar=c(5,4,4,2)+0.1)
     gg2 <- ggplot(data=plot.df,aes(x=.data$time)) + 

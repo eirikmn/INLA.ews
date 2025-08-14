@@ -13,8 +13,8 @@
 #' @seealso \code{\link{inla.ews}}
 #' @keywords INLA early warning signal summary 
 #' @importFrom stats density dnorm sd
-#' @importFrom matrixStats rowMedians rowSds rowQuantiles rowSums2
-resultgather_ar2 = function(object,nsims=10000,print.progress){
+#' @importFrom matrixStats rowMedians rowSds rowQuantiles rowMeans2
+resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
   n = nrow(object$.args$inladata)
   #n = length(object$.args$data)
   r = object$inlafit
@@ -250,7 +250,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress){
     #   trendupper[i] = zm$quant0.025
     #   trendlower[i] = zm$quant0.975
     # }
-    trendmean = rowSums2(trendsamps)
+    trendmean = rowMeans2(trendsamps)
     trendlower = rowQuantiles(trendsamps, probs=0.025)
     trendupper = rowQuantiles(trendsamps, probs=0.975)
     
@@ -308,7 +308,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress){
     #   Flower[i] = zm$quant0.025
     #   Fupper[i] = zm$quant0.975
     # }
-    Fmean = rowSums2(muveksamps)
+    Fmean = rowMeans2(muveksamps)
     Flower = rowQuantiles(muveksamps, probs=0.025)
     Fupper = rowQuantiles(muveksamps, probs=0.975)
     
@@ -316,7 +316,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress){
     # alltrendmean = numeric(n)
     # alltrendupper = numeric(n)
     # alltrendlower = numeric(n)
-    if(sd(alltrendsamps)>0){
+    if(diff(range(alltrendsamps))>0){
       # for(i in 1:n){
       #   dens0 = density(alltrendsamps[i,]); dens=data.frame(x=dens0$x,y=dens0$y)
       #   zm = INLA::inla.zmarginal(dens,silent=TRUE)
@@ -324,7 +324,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress){
       #   alltrendlower[i] = zm$quant0.025
       #   alltrendupper[i] = zm$quant0.975
       # }
-      alltrendmean = rowSums2(alltrendsamps)
+      alltrendmean = rowMeans2(alltrendsamps)
       alltrendlower = rowQuantiles(alltrendsamps, probs=0.025)
       alltrendupper = rowQuantiles(alltrendsamps, probs=0.975)
     }
@@ -346,7 +346,9 @@ resultgather_ar2 = function(object,nsims=10000,print.progress){
   if(print.progress){
     cat("Storing everything in object$results..\n",sep="")
   }
-  object$results = list(marginals = list(a_phi=a_phi_marg, b_phi=b_phi_marg,a_rho=a_rho_marg, b_rho=b_rho_marg, sigma=sigma_marg))
+  object$results = list(marginals = list(a_phi=as.data.frame(a_phi_marg), b_phi=as.data.frame(b_phi_marg),
+                                         a_rho=as.data.frame(a_rho_marg), b_rho=as.data.frame(b_rho_marg), 
+                                         sigma=as.data.frame(sigma_marg)))
   object$results$summary = list(a_phi = a_phi_zmarg,#list(INLA::inla.zmarginal(a_marg,silent=TRUE))[[1]],
                                 b_phi = b_phi_zmarg,#list(INLA::inla.zmarginal(b_marg,silent=TRUE))[[1]],
                                 a_rho = a_rho_zmarg,#list(INLA::inla.zmarginal(a_marg,silent=TRUE))[[1]],
@@ -369,7 +371,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress){
   object$results$summary$trend = list(mean=trendmean, quant0.025=trendlower, quant0.975=trendupper)
   object$results$summary$alltrend = list(mean=alltrendmean, quant0.025=alltrendlower, quant0.975=alltrendupper)
   if(length(object$.args$forcing)>0){
-    object$results$marginals$sigmaf = sigmaf_marg
+    object$results$marginals$sigmaf = as.data.frame(sigmaf_marg)
    # object$results$marginals$F0 = F0_marg
     
     object$results$summary$sigmaf = INLA::inla.zmarginal(sigmaf_marg,silent=TRUE)

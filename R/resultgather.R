@@ -13,7 +13,7 @@
 #' @seealso \code{\link{inla.ews}}
 #' @keywords INLA early warning signal summary 
 #' @importFrom stats density dnorm sd
-#' @importFrom matrixStats rowMedians rowSds rowQuantiles rowSums2
+#' @importFrom matrixStats rowMedians rowSds rowQuantiles rowMeans2
 resultgather <- function(object,nsims=10000,print.progress){
   n = nrow(object$.args$inladata)
   #n = length(object$.args$data)
@@ -47,7 +47,7 @@ resultgather <- function(object,nsims=10000,print.progress){
   if(object$.args$model %in% c("ar1","ar(1)","1", "ar1g")){
     if(length(object$.args$forcing)>0){
       sigmaf_marg = INLA::inla.tmarginal(function(x)1/sqrt(exp(x)),object$inlafit$marginals.hyperpar$`Theta4 for idy`)
-      F0_marg = object$inlafit$marginals.hyperpar$`Theta5 for idy`
+      F0_marg = INLA::inla.smarginal(object$inlafit$marginals.hyperpar$`Theta5 for idy`)
     }
     
     b_sims = -1/rekke+2/rekke*1/(1+exp(-hypersamples[,2+nextrahyps]))
@@ -189,7 +189,7 @@ resultgather <- function(object,nsims=10000,print.progress){
     #   trendupper[i] = zm$quant0.025
     #   trendlower[i] = zm$quant0.975
     # }
-    trendmean = rowSums2(trendsamps)
+    trendmean = rowMeans2(trendsamps)
     trendlower = rowQuantiles(trendsamps, probs=0.025)
     trendupper = rowQuantiles(trendsamps, probs=0.975)
     
@@ -262,7 +262,8 @@ resultgather <- function(object,nsims=10000,print.progress){
   if(print.progress){
     cat("Storing everything in object$results..\n",sep="")
   }
-  object$results = list(marginals = list(a=a_marg, b=b_marg, sigma=sigma_marg))
+  object$results = list(marginals = list(a=as.data.frame(a_marg), b=as.data.frame(b_marg), 
+                                         sigma=as.data.frame(sigma_marg)))
   object$results$summary = list(a = a_zmarg,#list(INLA::inla.zmarginal(a_marg,silent=TRUE))[[1]],
                                 b = b_zmarg,#list(INLA::inla.zmarginal(b_marg,silent=TRUE))[[1]],
                                 sigma = list(INLA::inla.zmarginal(sigma_marg,silent=TRUE))[[1]])
@@ -279,8 +280,8 @@ resultgather <- function(object,nsims=10000,print.progress){
   object$results$summary$trend = list(mean=trendmean, quant0.025=trendlower, quant0.975=trendupper)
   object$results$summary$alltrend = list(mean=alltrendmean, quant0.025=alltrendlower, quant0.975=alltrendupper)
   if(length(object$.args$forcing)>0){
-    object$results$marginals$sigmaf = sigmaf_marg
-    object$results$marginals$F0 = F0_marg
+    object$results$marginals$sigmaf = as.data.frame(sigmaf_marg)
+    object$results$marginals$F0 = as.data.frame(F0_marg)
     
     object$results$summary$sigmaf = INLA::inla.zmarginal(sigmaf_marg,silent=TRUE)
     object$results$summary$sigmaf$mode = INLA::inla.mmarginal(sigmaf_marg)

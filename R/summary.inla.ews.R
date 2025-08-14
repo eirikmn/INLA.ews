@@ -48,52 +48,104 @@ summary.inla.ews = function(object,digits=4L,...){
   out = c(out, list(interceptmat=interceptmat))
   
   
-
-  hypers = matrix(round(
-    c(object$results$summary$a$mean,object$results$summary$a$sd,
-      object$results$summary$a$quant0.025,object$results$summary$a$quant0.5,
-      object$results$summary$a$quant0.975,
-      object$results$summary$b$mean,object$results$summary$b$sd,
-      object$results$summary$b$quant0.025,object$results$summary$b$quant0.5,
-      object$results$summary$b$quant0.975,
-      object$results$summary$sigma$mean,object$results$summary$sigma$sd,
-      object$results$summary$sigma$quant0.025,object$results$summary$sigma$quant0.5,
-      object$results$summary$sigma$quant0.975
-    ),digits=digits), nrow=3,byrow=TRUE)
-  
-  colnames(hypers) = c("mean","sd","0.025quant","0.5quant","0.975quant")
-  rownames = c("a","b","sigma")
-  if(length(object$.args$forcing)>0){
-    is.forcing=TRUE
-    rownames = c(rownames,c("sigma_f","F0"))
-    hypers = rbind(hypers, round(c(
-      object$results$summary$sigmaf$mean,object$results$summary$sigmaf$sd,
-      object$results$summary$sigmaf$quant0.025,object$results$summary$sigmaf$quant0.5,
-      object$results$summary$sigmaf$quant0.975),digits=digits
+  if(tolower(object$.args$model) %in% c("ar1", "ar(1)", "1")){
+    hypers = matrix(round(
+      c(object$results$summary$a$mean,object$results$summary$a$sd,
+        object$results$summary$a$quant0.025,object$results$summary$a$quant0.5,
+        object$results$summary$a$quant0.975,
+        object$results$summary$b$mean,object$results$summary$b$sd,
+        object$results$summary$b$quant0.025,object$results$summary$b$quant0.5,
+        object$results$summary$b$quant0.975,
+        object$results$summary$sigma$mean,object$results$summary$sigma$sd,
+        object$results$summary$sigma$quant0.025,object$results$summary$sigma$quant0.5,
+        object$results$summary$sigma$quant0.975
+      ),digits=digits), nrow=3,byrow=TRUE)
+    
+    colnames(hypers) = c("mean","sd","0.025quant","0.5quant","0.975quant")
+    rownames = c("a","b","sigma")
+    if(length(object$.args$forcing)>0){
+      is.forcing=TRUE
+      rownames = c(rownames,c("sigma_f","F0"))
+      hypers = rbind(hypers, round(c(
+        object$results$summary$sigmaf$mean,object$results$summary$sigmaf$sd,
+        object$results$summary$sigmaf$quant0.025,object$results$summary$sigmaf$quant0.5,
+        object$results$summary$sigmaf$quant0.975),digits=digits
       ))
-    hypers = rbind(hypers, round(c(
-      object$results$summary$F0$mean,object$results$summary$F0$sd,
-      object$results$summary$F0$quant0.025,object$results$summary$F0$quant0.5,
-      object$results$summary$F0$quant0.975),digits=digits
-    ))
-  }else{
-    is.forcing=FALSE
+      hypers = rbind(hypers, round(c(
+        object$results$summary$F0$mean,object$results$summary$F0$sd,
+        object$results$summary$F0$quant0.025,object$results$summary$F0$quant0.5,
+        object$results$summary$F0$quant0.975),digits=digits
+      ))
+    }else{
+      is.forcing=FALSE
+    }
+    
+    nextrahyps = nrow(object$inlafit$summary.hyperpar)-3
+    if(is.forcing){
+      nextrahyps = nextrahyps - 2
+    }else{
+      
+    }
+    if(nextrahyps>=1){
+      extrahypers = round(object$inlafit$summary.hyperpar[1:(nextrahyps),1:5], digits=digits)
+    }else{
+      extrahypers = NULL
+    }
+  }else if(tolower(object$.args$model) %in% c("ar2", "ar(2)", "2")){
+    hypers = matrix(round(
+      c(object$results$summary$a_phi$mean,object$results$summary$a_phi$sd,
+        object$results$summary$a_phi$quant0.025,object$results$summary$a_phi$quant0.5,
+        object$results$summary$a_phi$quant0.975,
+        object$results$summary$b_phi$mean,object$results$summary$b_phi$sd,
+        object$results$summary$b_phi$quant0.025,object$results$summary$b_phi$quant0.5,
+        object$results$summary$b_phi$quant0.975,
+        object$results$summary$a_rho$mean,object$results$summary$a_rho$sd,
+        object$results$summary$a_rho$quant0.025,object$results$summary$a_rho$quant0.5,
+        object$results$summary$a_rho$quant0.975,
+        object$results$summary$b_rho$mean,object$results$summary$b_rho$sd,
+        object$results$summary$b_rho$quant0.025,object$results$summary$b_rho$quant0.5,
+        object$results$summary$b_rho$quant0.975,
+        object$results$summary$sigma$mean,object$results$summary$sigma$sd,
+        object$results$summary$sigma$quant0.025,object$results$summary$sigma$quant0.5,
+        object$results$summary$sigma$quant0.975
+      ),digits=digits), nrow=5,byrow=TRUE)
+    colnames(hypers) = c("mean","sd","0.025quant","0.5quant","0.975quant")
+    rownames = c("a_phi","b_phi","a_rho","b_rho","sigma")
+    
+    if(length(object$.args$forcing)>0){
+      is.forcing=TRUE
+      rownames = c(rownames,c("sigma_f"))
+      hypers = rbind(hypers, round(c(
+        object$results$summary$sigmaf$mean,object$results$summary$sigmaf$sd,
+        object$results$summary$sigmaf$quant0.025,object$results$summary$sigmaf$quant0.5,
+        object$results$summary$sigmaf$quant0.975),digits=digits
+      ))
+      # hypers = rbind(hypers, round(c(
+      #   object$results$summary$F0$mean,object$results$summary$F0$sd,
+      #   object$results$summary$F0$quant0.025,object$results$summary$F0$quant0.5,
+      #   object$results$summary$F0$quant0.975),digits=digits
+      # ))
+    }else{
+      is.forcing=FALSE
+    }
+      nextrahyps = length(nrow(object$inlafit$summary.hyperpar))
+      if(is.forcing){
+        nextrahyps = nextrahyps - 2
+      }
+      if(nextrahyps>1){
+        extrahypers = round(object$inlafit$summary.hyperpar[1:(nextrahyps),1:5], digits=digits)
+      }else{
+        extrahypers = NULL
+      }
+    
+    
   }
   
-  nextrahyps = length(nrow(object$inlafit$summary.hyperpar))
-  if(is.forcing){
-    nextrahyps = nextrahyps - 2
-  }
-  if(nextrahyps>1){
-    extrahypers = round(object$inlafit$summary.hyperpar[1:(nextrahyps-1),1:5], digits=digits)
-  }else{
-    extrahypers = NULL
-  }
   out = c(out,list(extrahypers=extrahypers))
   
   rownames(hypers)=rownames
   out = c(out, hypers=list(hypers))
-  out = c(out, b_positive = object$results$summary$b$prob_positive)
+  out = c(out, b_positive = object$results$summary$b_phi$prob_positive)
   n=length(object$.args$data)
   out = c(out,list(n=n))
   
@@ -117,6 +169,22 @@ summary.inla.ews = function(object,digits=4L,...){
       rownames=c("phi[1]","phi[n]")
     }
     
+  }else if(tolower(object$.args$model) %in% c("ar2","ar(2)","2")){
+    memorystart = c(object$results$summary$phi0$mean[1],
+                    object$results$summary$phi0$sd[1],
+                    object$results$summary$phi0$q0.025[1],
+                    object$results$summary$phi0$q0.5[1],
+                    object$results$summary$phi0$q0.975[1])
+    memoryend = c(object$results$summary$phi0$mean[n],
+               object$results$summary$phi0$sd[n],
+               object$results$summary$phi0$q0.025[n],
+               object$results$summary$phi0$q0.5[n],
+               object$results$summary$phi0$q0.975[n])
+    if(is.irreg){
+      rownames=c("phi0[1]","phi0[n]")
+    }else{
+      rownames=c("phi[1]","phi[n]")
+    }
   }
   
   memorymat = rbind(memorystart,memoryend)

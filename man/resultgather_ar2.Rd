@@ -5,7 +5,7 @@
 \title{Gather results from INLA fit
 This function gathers and formats results from INLA fit, assuming a nested time dependent AR(1) model.}
 \usage{
-resultgather_ar2(object, nsims = 10000, print.progress)
+resultgather_ar2(object, nsims = 10000, print.progress = FALSE)
 }
 \arguments{
 \item{object}{S3 object of type \code{inla.ews} which includes result from 
