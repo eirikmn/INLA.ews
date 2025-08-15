@@ -316,7 +316,8 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     # alltrendmean = numeric(n)
     # alltrendupper = numeric(n)
     # alltrendlower = numeric(n)
-    if(diff(range(alltrendsamps))>0){
+    # if(diff(range(alltrendsamps))>0){
+    if(TRUE){
       # for(i in 1:n){
       #   dens0 = density(alltrendsamps[i,]); dens=data.frame(x=dens0$x,y=dens0$y)
       #   zm = INLA::inla.zmarginal(dens,silent=TRUE)
