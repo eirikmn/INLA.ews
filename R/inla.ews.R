@@ -192,8 +192,8 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
         # )
         
         rgen_model = INLA::inla.rgeneric.define(rgeneric.ar2.forcing,n=n,
-                                                time=seq(from=0,to=1,length.out=n),
-                                                #time=time_normalized, #sometimes different results if the line above is uncommented instead
+                                                #time=seq(from=0,to=1,length.out=n),
+                                                time=time_normalized, #sometimes different results if the line above is uncommented instead
                                                 my.log.prior=log.prior,
                                                 forcing=forcing
         )
