@@ -276,7 +276,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     for(s in 1:nsims){
       
       sfsamp = 1/sqrt(kappa_samp[s])
-      pars = c(exp(hypersamples[,3+nextrahyps]), b_phi_sims[s], a_phi_sims[s], kappa_samp[s], 0)#c(kappa_eps,b,a,kappa_f,F0)
+      pars = c(exp(hypersamples[,3+nextrahyps]), b_phi_sims[s], a_phi_sims[s], sfsamp, 0)#c(kappa_eps,b,a,kappa_f,F0)
       
       muveksamps[,s] = mucomputer(pars=pars,
                                 forcing = forcing,#object$.args$forcing,
