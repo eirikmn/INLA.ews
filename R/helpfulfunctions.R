@@ -64,7 +64,7 @@ ar1_timedep_sim <- function(n,sigma=1,a=0.2,b=0.7,phis=NULL){
 inla.options.default <- function(){
   return(list(
     num.threads=1,
-    control.mode=list(restart=TRUE),
+    # control.mode=list(restart=TRUE),
     control.inla=list(h=0.005),
     control.family = list(hyper = list(prec = list(initial = 12, fixed=TRUE)))
   )

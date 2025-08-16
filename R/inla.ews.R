@@ -244,12 +244,10 @@ inla.ews <- function(data, forcing=numeric(0), formula=NULL, model="ar1",compute
       
     }
     if(i >= 2){
-      #inla.options$control.mode$theta = r$summary.hyperpar$mode
+      inla.options$control.mode$theta = r$summary.hyperpar$mode
       inla.options$control.mode$result = r #use previous theta and x-mode
       inla.options$control.mode$restart = TRUE
-    }else{
-      inla.options$control.mode$result = NULL
-      inla.options$control.mode$restart = FALSE
+      
     }
     inla.options$control.inla$h = stepsize[i]
     
