@@ -381,6 +381,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     #object$results$summary$F0$mode = INLA::inla.mmarginal(F0_marg)
     
     object$results$summary$Fresponse = list(mean=Fmean, quant0.025=Flower, quant0.975=Fupper)
+    object$results$simulations$Fresponse = muveksamps
   }
   
   # if(!is.null(object$inlafit$summary.fixed)){
