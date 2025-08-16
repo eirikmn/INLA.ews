@@ -310,7 +310,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     #inla.posterior.sample(n=nsims,result = res)
     
     estsim = matrix(NA,nrow=n,ncol=nsims)
-    
+    time_norm=time_normalized
     for(i in 1:nsims){
       
       

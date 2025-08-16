@@ -1,0 +1,311 @@
+# AMOC Results using detrending approach
+
+
+## Import AMOC data 
+```{r}
+AMOCdata <- read.table("AMOCdata.txt", header = TRUE, sep = "", dec = ".")
+data_monthly = AMOCdata$AMOC2 # Monthly AMOC data
+time = 1871:2020
+
+data=numeric(149)
+     for (j in 0:149) {
+       data[j+1] = mean(data_monthly[(2+j*12):(2+(j+1)*12)]) # Yearly average of AMOC data
+     }
+
+
+  time_step=0:149
+  ttime = time_step
+  time_normalized = (ttime-min(ttime))/max(ttime-min(ttime))
+  n=length(data)
+```
+
+
+### Fitting with Inla.ews()
+
+```{r}
+library(INLA)
+library(INLA.ews)
+library(ggplot2)
+library(ggpubr)
+library(readr)
+
+  
+
+  trend1 = time_normalized
+  trend2 = time_normalized^2
+  
+  formula1 = y ~  1 + trend + f(idy, model=rgen_model) # Defines formula with Linear Trend
+  formula2 = y ~  1 + trend + trend2 + f(idy, model=rgen_model) # Defines formula with Square Trend
+  formularw2 = y ~  1 + f(idx,model="rw2")+ f(idy, model=rgen_model) # Defines formula with RW2 Trend
+  
+  
+dataframe = data.frame(y=data, time=time_normalized,trend=trend1,trend2=trend2, idx=1:n,idy=1:n,time=time)
+  
+  
+  res1 = inla.ews(data = dataframe,model = "ar2", formula = formula1) # Inla fit using Linear Trend
+  
+  res2 = inla.ews(data = dataframe,model = "ar2", formula = formula2) # Inla fit using Square Trend
+  
+  resrw2 = inla.ews(data = dataframe,model = "ar2", formula = formularw2) # Inla fit using RW2 Trend
+  
+```
+ 
+  
+#### Plots of Phi(t) using different detrending formulas
+  
+```{r}
+  
+  ggp1 = ggplot(data=dataframe,aes(x=1871:2020)) +
+    geom_ribbon(aes(ymin=res1$results$summary$phi$q0.025,
+                    ymax=res1$results$summary$phi$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=res1$results$summary$phi$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() +
+  ggtitle(paste0("Linear trend "),subtitle=paste0("P(b>0) = ", round(res1$results$summary$b_phi$prob_positive,digits=3))) +
+    ylab(expression(paste(phi,"(t)"))) # Phi(t) using Linear trend
+
+
+ggp2 = ggplot(data=dataframe,aes(x=1871:2020)) +
+    geom_ribbon(aes(ymin=res2$results$summary$phi$q0.025,
+                    ymax=res2$results$summary$phi$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=res2$results$summary$phi$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() + 
+  ggtitle(paste0("Square trend "),subtitle=paste0("P(b>0) = ", round(res2$results$summary$b_phi$prob_positive,digits=3))) +
+    ylab(expression(paste(phi,"(t)"))) # Phi(t) using Square trend
+
+
+ggprw2 = ggplot(data=dataframe,aes(x=1871:2020)) +
+    geom_ribbon(aes(ymin=resrw2$results$summary$phi$q0.025,
+                    ymax=resrw2$results$summary$phi$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=resrw2$results$summary$phi$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() + 
+  ggtitle(paste0("RW2 trend "),subtitle=paste0("P(b>0) = ",
+        round(resrw2$results$summary$b_phi$prob_positive,digits=3))) +
+    ylab(expression(paste(phi,"(t)"))) # Phi(t) using RW2 trend
+
+```
+    
+    
+    
+##### Plots of Rho(t) using different detrending formulas
+  
+```{r}  
+
+
+  ggr1 = ggplot(data=dataframe,aes(x=1871:2020)) +
+    geom_ribbon(aes(ymin=res1$results$summary$rho$q0.025,
+                    ymax=res1$results$summary$rho$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=res1$results$summary$rho$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() +
+  ggtitle(paste0("Linear trend ")) +
+    ylab(expression(paste(rho,"(t)"))) # Rho(t) using Linear trend
+
+
+  ggr2 = ggplot(data=dataframe,aes(x=1871:2020)) +
+    geom_ribbon(aes(ymin=res2$results$summary$rho$q0.025,
+                    ymax=res2$results$summary$rho$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=res2$results$summary$rho$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() +
+  ggtitle(paste0("Square trend ")) +
+    ylab(expression(paste(rho,"(t)"))) # Rho(t) using Square trend
+
+
+  ggrrw2 = ggplot(data=dataframe,aes(x=1871:2020)) +
+    geom_ribbon(aes(ymin=resrw2$results$summary$rho$q0.025,
+                    ymax=resrw2$results$summary$rho$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=resrw2$results$summary$rho$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() +
+  ggtitle(paste0("RW2 trend ")) +
+    ylab(expression(paste(rho,"(t)"))) # Rho(t) using RW2 trend
+
+```
+  
+###### Plots of the different trends 
+  
+```{r}  
+
+
+  ggm1 = ggplot(data=dataframe,aes(x=1871:2020)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=res1$results$summary$alltrend$quant0.025,
+                    ymax=res1$results$summary$alltrend$quant0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=res1$results$summary$alltrend$mean),
+              col="blue", linewidth=1.2)+ 
+  theme_bw() +
+    xlab("Time ")+ 
+  ylab("Response Function")+
+    ggtitle(paste0("Linear trend"))  # Linear trend
+
+
+  ggm2 = ggplot(data=dataframe,aes(x=1871:2020)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=res2$results$summary$alltrend$quant0.025,
+                    ymax=res2$results$summary$alltrend$quant0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=res2$results$summary$alltrend$mean),
+              col="blue", linewidth=1.2)+ 
+    theme_bw() +
+    xlab("Time ")+ 
+    ylab("Response Function")+
+    ggtitle(paste0("Square trend"))  # Square trend
+  
+  ggmrw2 = ggplot(data=dataframe,aes(x=1871:2020)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=resrw2$results$summary$alltrend$quant0.025,
+                    ymax=resrw2$results$summary$alltrend$quant0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=resrw2$results$summary$alltrend$mean), 
+              col="blue", linewidth=1.2)+ 
+    theme_bw() +
+    xlab("Time ")+ 
+    ylab("Response Function")+
+    ggtitle(paste0("RW2 trend")) # RW2 trend
+```
+
+
+###### Gathered plots
+
+```{r}  
+print(ggarrange(ggm1,ggm2,ggmrw2,nrow=2,ncol=2)) # Trends
+print(ggarrange(ggp1,ggp2,ggprw2,nrow=2,ncol=2)) # Phi(t)
+print(ggarrange(ggr1,ggr2,ggrrw2,nrow=2,ncol=2)) # Rho(t)
+```
+
+
+
+-------------------------------------------------------
+
+# AMOC Results using physical Forcing
+
+
+## Import AMOC data + iCWG
+```{r}
+AMOCdata <- read.table("AMOCdata.txt", header = TRUE, sep = "", dec = ".")
+data_monthly = AMOCdata$AMOC2 # Monthly AMOC data
+time = 1871:2013
+
+data=numeric(149)
+     for (j in 0:149) {
+       data[j+1] = mean(data_monthly[(2+j*12):(2+(j+1)*12)]) # Yearly average of AMOC data
+     }
+
+FORCINGDATAM =  read.table("FORCINGDATAM.txt", header = TRUE, sep = "", dec = ".")
+FForcing = FORCINGDATAM$INTEGRATED_CWG_FROM_1871...[1:143] # Yearly iCWG data truncated to avoid NA values
+data = data[1:143] - mean(data[1:20]) # AMOC data truncated to match iCWG length and shiffted to improve INLA fit
+
+  time_step=0:142
+  ttime = time_step
+  time_normalized = (ttime-min(ttime))/max(ttime-min(ttime))
+  n=length(data)
+```
+
+
+### Fitting with Inla.ews()
+```{r}
+library(INLA)
+library(INLA.ews)
+library(ggplot2)
+library(ggpubr)
+library(readr)
+
+y=data
+## !!! Run the script "numtest.R" before running code below. numtest.R loads the necessary functions for the following numerical optimization. !!! ##
+initheta = rnorm(6)
+likelicost(initheta, data, FForcing)
+resi = optim(
+  initheta,
+  likelicost,
+  y=data, z=FForcing,
+  method="L-BFGS-B"
+) # Uses numerical optimization to find initial conditions to improve the INLA fit
+  
+dataframe = data.frame(y=data,idy=1:n)
+  
+ res = inla.ews(data = dataframe,     # Inla fit
+                model = "ar2",
+                forcing = FForcing,
+                inla.options=list(control.family=list(initial=12,fixed=TRUE),
+           verbose = FALSE,
+           #control.mode=list(restart=TRUE,theta = resi$summary.hyperpar$mean ),
+           control.mode=list(restart=TRUE,theta = resi$par),
+           control.inla=list(h=0.005),
+           control.compute=list(config = TRUE,dic=TRUE,waic=TRUE))) 
+```
+
+
+#### Plots of Phi(t) using physical forcing
+  
+```{r}
+  ggp = ggplot(data=dataframe,aes(x=1871:2013)) +
+    geom_ribbon(aes(ymin=res$results$summary$phi$q0.025,
+                    ymax=res$results$summary$phi$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=res$results$summary$phi$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() +
+  ggtitle(paste0("Physical Forcing "),subtitle=paste0("P(b>0) = ", round(res$results$summary$b_phi$prob_positive,digits=3))) +
+    ylab(expression(paste(phi,"(t)"))) # Phi(t) using physical Forcing 
+```
+
+##### Plots of Rho(t) using physical forcing
+  
+```{r}  
+  ggr = ggplot(data=dataframe,aes(x=1871:2013)) +
+    geom_ribbon(aes(ymin=res$results$summary$rho$q0.025,
+                    ymax=res$results$summary$rho$q0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2)+
+    geom_line(aes(y=res$results$summary$rho$mean),col="blue",linewidth=1.2) +
+  xlab("Time") +
+    ylim(c(0,1)) +
+    theme_bw() +
+  ggtitle(paste0("Physical Forcing")) +
+    ylab(expression(paste(rho,"(t)"))) # Rho(t) using physical Forcing 
+
+```
+
+###### Plots of the different trends 
+  
+```{r}  
+
+
+  ggm = ggplot(data=dataframe,aes(x=1871:2013)) + 
+    geom_line(aes(y=y),col="black")+
+    geom_ribbon(aes(ymin=res$results$summary$alltrend$quant0.025,
+                    ymax=res$results$summary$alltrend$quant0.975),
+                col="red",fill="red",alpha=0.3,linewidth=1.2) +
+    geom_line(aes(y=res$results$summary$alltrend$mean),
+              col="blue", linewidth=1.2)+ 
+  theme_bw() +
+    xlab("Time ")+ 
+  ylab("Response Function")+
+    ggtitle(paste0("Physical Forcing"))  # Physical forcing
+
+```
+
+
+###### Gathered plots
+
+```{r}  
+print(ggm) # Response Function
+print(ggp) # Phi(t)
+print(ggr) # Rho(t)
+```
