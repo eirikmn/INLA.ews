@@ -14,6 +14,7 @@
 #' @keywords INLA early warning signal summary 
 #' @importFrom stats density dnorm sd
 #' @importFrom matrixStats rowMedians rowSds rowQuantiles rowMeans2
+
 resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
   n = nrow(object$.args$inladata)
   #n = length(object$.args$data)
@@ -273,34 +274,74 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     kappa_samp = exp(hypersamples[,6+nextrahyps])
     forcing=object$.args$forcing
     #F0samp = hypersamples[,5+nextrahyps]
-    for(s in 1:nsims){
+    ##for(s in 1:nsims){
+    
+    ## sfsamp = 1/sqrt(kappa_samp[s])
+    ##pars = c(exp(hypersamples[,3+nextrahyps]), b_phi_sims[s], a_phi_sims[s], sfsamp, 0)#c(kappa_eps,b,a,kappa_f,F0)
+    
+    ##  muveksamps[,s] = mucomputer(pars=pars,
+    ##                            forcing = forcing,#object$.args$forcing,
+    ##                          time_norm = time_normalized, as.theta=FALSE)
+    
+    #zz = (object$.args$forcing+F0samp[i])*sfsamp[i]
+    
+    #struktur = exp(-lambda_sims[s]*time_normalized)
+    
+    #for(i in 1:n){
+    #  muveksamps[i,s] = rev(struktur[1:i])%*%zz[1:i]
+    #}
+    # lambda_est = -log(a_phi_sims[s] + b_phi_sims[s]*time_normalized)
+    # zz_est = (forcing)/sqrt(kappa_samp)
+    # for(k in 1:n){
+    #   for(i in 1:k){
+    #     muveksamps[k,s] = nu_est[k] + zz_est[i]*exp(-lambda_est[k]*(time_normalized[k]-time_normalized[i]))
+    #   }
+    # }
+    # muveksamps[,s]= (1/(sqrt(2*lambda_est)))*muveksamps[,s]
+    
+    
+    
+    
+    ## }
+    
+    
+    # postsamps = hypersamples
+    #postsamps[[i]]$hyperpar[[1]]
+    #inla.posterior.sample(n=nsims,result = res)
+    
+    estsim = matrix(NA,nrow=n,ncol=nsims)
+    
+    for(i in 1:nsims){
       
-      sfsamp = 1/sqrt(kappa_samp[s])
-      pars = c(exp(hypersamples[,3+nextrahyps]), b_phi_sims[s], a_phi_sims[s], sfsamp, 0)#c(kappa_eps,b,a,kappa_f,F0)
-      
-      muveksamps[,s] = mucomputer(pars=pars,
-                                forcing = forcing,#object$.args$forcing,
-                               time_norm = time_normalized, as.theta=FALSE)
-      #zz = (object$.args$forcing+F0samp[i])*sfsamp[i]
-      
-      #struktur = exp(-lambda_sims[s]*time_normalized)
-      
-      #for(i in 1:n){
-      #  muveksamps[i,s] = rev(struktur[1:i])%*%zz[1:i]
-      #}
-      # lambda_est = -log(a_phi_sims[s] + b_phi_sims[s]*time_normalized)
-      # zz_est = (forcing)/sqrt(kappa_samp)
-      # for(k in 1:n){
-      #   for(i in 1:k){
-      #     muveksamps[k,s] = nu_est[k] + zz_est[i]*exp(-lambda_est[k]*(time_normalized[k]-time_normalized[i]))
-      #   }
-      # }
-      # muveksamps[,s]= (1/(sqrt(2*lambda_est)))*muveksamps[,s]
       
       
+      nu_est = numeric(n)
       
+      r=1
+      b_phi_est=-1/r+2/r*1/(1+exp(-postsamps[[i]]$hyperpar[[1+nextrahyps]]))
+      low_Y = min(b_phi_est*time_norm[1],b_phi_est*time_norm[n])
+      high_Y = max(b_phi_est*time_norm[1],b_phi_est*time_norm[n])
+      a_phi_est = -low_Y + (1-high_Y+low_Y)/(1+exp(-postsamps[[i]]$hyperpar[[2+nextrahyps]]))    
+      lambda_est = -log(a_phi_est + b_phi_est*time_norm)
+      F0_est = 0 
+      kappa_F_est = exp(postsamps[[i]]$hyperpar[[6+nextrahyps]])
+      FForcing_est = F0_est + forcing
+      zz_est = (FForcing_est)/sqrt(kappa_F_est)
+      for(k in 1:n){
+        for(s in 1:k){
+          nu_est[k] = nu_est[k] + zz_est[s]*exp(-lambda_est[k]*(time_norm[k]-time_norm[s]))
+        }
+      }
+      nu_est= (1/(sqrt(2*lambda_est)))*nu_est
       
+      # fixedsamps = tail(postsamps[[i]]$latent,1)[1]
+      
+      estsim[,i]= nu_est #+ fixedsamps
     }
+    
+    muveksamps = estsim
+    
+    
     # for(i in 1:n){
     #   dens0 = density(muveksamps[i,]); dens=data.frame(x=dens0$x,y=dens0$y)
     #   zm = INLA::inla.zmarginal(dens,silent=TRUE)
@@ -312,6 +353,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     Flower = rowQuantiles(muveksamps, probs=0.025)
     Fupper = rowQuantiles(muveksamps, probs=0.975)
     
+    # alltrendsamps = muveksamps
     alltrendsamps = trendsamps + muveksamps
     # alltrendmean = numeric(n)
     # alltrendupper = numeric(n)
@@ -373,7 +415,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
   object$results$summary$alltrend = list(mean=alltrendmean, quant0.025=alltrendlower, quant0.975=alltrendupper)
   if(length(object$.args$forcing)>0){
     object$results$marginals$sigmaf = as.data.frame(sigmaf_marg)
-   # object$results$marginals$F0 = F0_marg
+    # object$results$marginals$F0 = F0_marg
     
     object$results$summary$sigmaf = INLA::inla.zmarginal(sigmaf_marg,silent=TRUE)
     object$results$summary$sigmaf$mode = INLA::inla.mmarginal(sigmaf_marg)
