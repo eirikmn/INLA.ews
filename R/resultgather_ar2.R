@@ -308,6 +308,7 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
     # postsamps = hypersamples
     #postsamps[[i]]$hyperpar[[1]]
     #inla.posterior.sample(n=nsims,result = res)
+
     
     estsim = matrix(NA,nrow=n,ncol=nsims)
     time_norm=time_normalized

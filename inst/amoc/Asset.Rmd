@@ -19,6 +19,24 @@ data=numeric(149)
   n=length(data)
 ```
 
+### Define priors
+Since Hallali et al. (2025) was submitted, we changed the default priors to the penalised complexity priors (Simpson et al., 2017). To use the same priors as in the paper, define priors as below.
+
+```{r}
+
+my.log.prior = function(){
+  lprior = -theta[1] -2*log(1+exp(-theta[1])) #b_phi
+        lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))#a_phi
+        lprior = lprior + dgamma(exp(theta[3]), shape=1, rate=0.1) + theta[3] #kappa_x
+        lprior = lprior -theta[4] -2*log(1+exp(-theta[4])) #b_rho
+        lprior = lprior -theta[5] -2*log(1+exp(-theta[5]))#a_rho
+        # lprior = lprior + dnorm(theta[6], mean=0, sd=1) #
+        lprior = lprior + dgamma(exp(theta[6]), shape=1, rate=0.1) + theta[6] #kappa_f
+    return(lprior)
+  }
+
+```
+
 
 ### Fitting with Inla.ews()
 
@@ -42,11 +60,11 @@ library(readr)
 dataframe = data.frame(y=data, time=time_normalized,trend=trend1,trend2=trend2, idx=1:n,idy=1:n,time=time)
   
   
-  res1 = inla.ews(data = dataframe,model = "ar2", formula = formula1) # Inla fit using Linear Trend
+  res1 = inla.ews(data = dataframe,model = "ar2", formula = formula1, log.prior = my.log.prior) # Inla fit using Linear Trend
   
-  res2 = inla.ews(data = dataframe,model = "ar2", formula = formula2) # Inla fit using Square Trend
+  res2 = inla.ews(data = dataframe,model = "ar2", formula = formula2, log.prior = my.log.prior) # Inla fit using Square Trend
   
-  resrw2 = inla.ews(data = dataframe,model = "ar2", formula = formularw2) # Inla fit using RW2 Trend
+  resrw2 = inla.ews(data = dataframe,model = "ar2", formula = formularw2, log.prior = my.log.prior) # Inla fit using RW2 Trend
   
 ```
  
@@ -242,6 +260,7 @@ dataframe = data.frame(y=data,idy=1:n)
  res = inla.ews(data = dataframe,     # Inla fit
                 model = "ar2",
                 forcing = FForcing,
+                log.prior = my.log.prior,
                 inla.options=list(control.family=list(initial=12,fixed=TRUE),
            verbose = FALSE,
            #control.mode=list(restart=TRUE,theta = resi$summary.hyperpar$mean ),

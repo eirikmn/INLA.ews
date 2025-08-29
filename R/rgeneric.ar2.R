@@ -186,7 +186,8 @@ rgeneric.ar2 = function(
       
       lprior = -theta[1] -2*log(1+exp(-theta[1]))
       lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))
-      lprior = lprior + dgamma(exp(theta[3]), shape=1, rate=0.1) + theta[3]
+      # lprior = lprior + dgamma(exp(theta[3]), shape=1, rate=0.1) + theta[3]
+      lprior = lprior + INLA::inla.pc.dprec(exp(theta[3]), u=1, alpha=0.01, log=TRUE) + theta[3]
       lprior = lprior -theta[4] -2*log(1+exp(-theta[4]))
       lprior = lprior -theta[5] -2*log(1+exp(-theta[5]))
       
@@ -429,11 +430,13 @@ rgeneric.ar2.forcing = function(
       }else{
         lprior = -theta[1] -2*log(1+exp(-theta[1])) #b_phi
         lprior = lprior -theta[2] -2*log(1+exp(-theta[2]))#a_phi
-        lprior = lprior + dgamma(exp(theta[3]), shape=1, rate=0.1) + theta[3] #kappa_x
+        # lprior = lprior + dgamma(exp(theta[3]), shape=1, rate=0.1) + theta[3] #kappa_x
+        lprior = lprior + INLA::inla.pc.dprec(exp(theta[3]), u=1, alpha=0.01, log=TRUE) + theta[3]
         lprior = lprior -theta[4] -2*log(1+exp(-theta[4])) #b_rho
         lprior = lprior -theta[5] -2*log(1+exp(-theta[5]))#a_rho
         # lprior = lprior + dnorm(theta[6], mean=0, sd=1) #
         lprior = lprior + dgamma(exp(theta[6]), shape=1, rate=0.1) + theta[6] #kappa_f
+        lprior = lprior + INLA::inla.pc.dprec(exp(theta[6]), u=1, alpha=0.01, log=TRUE) + theta[6]
       }
       
       
