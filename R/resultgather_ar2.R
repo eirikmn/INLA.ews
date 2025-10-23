@@ -335,9 +335,9 @@ resultgather_ar2 = function(object,nsims=10000,print.progress=FALSE){
       }
       nu_est= (1/(sqrt(2*lambda_est)))*nu_est
       
-      # fixedsamps = tail(postsamps[[i]]$latent,1)[1]
+      fixedsamps = tail(postsamps[[i]]$latent,1)[1]
       
-      estsim[,i]= nu_est #+ fixedsamps
+      estsim[,i]= nu_est + fixedsamps
     }
     
     muveksamps = estsim

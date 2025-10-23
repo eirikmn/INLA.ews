@@ -30,7 +30,7 @@ is included, set to \code{numeric(0)} (default).}
 \item{formula}{Formula describing the linear predictor}
 
 \item{model}{Character string describing which noise model should be used.
-Currently only supports \code{"ar1"} (default).}
+Currently only supports \code{"ar1"} (default) and \code{"ar2"} (nested AR(1) model).}
 
 \item{compute.mu}{Should the forced response be computed? Set to \code{0} if not, 
 \code{1} if only mean and standard deviation should be computed or \code{2} if quantiles

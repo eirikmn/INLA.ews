@@ -435,7 +435,7 @@ rgeneric.ar2.forcing = function(
         lprior = lprior -theta[4] -2*log(1+exp(-theta[4])) #b_rho
         lprior = lprior -theta[5] -2*log(1+exp(-theta[5]))#a_rho
         # lprior = lprior + dnorm(theta[6], mean=0, sd=1) #
-        lprior = lprior + dgamma(exp(theta[6]), shape=1, rate=0.1) + theta[6] #kappa_f
+        # lprior = lprior + dgamma(exp(theta[6]), shape=1, rate=0.1) + theta[6] #kappa_f
         lprior = lprior + INLA::inla.pc.dprec(exp(theta[6]), u=1, alpha=0.01, log=TRUE) + theta[6]
       }
       
