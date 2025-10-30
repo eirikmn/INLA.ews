@@ -145,7 +145,12 @@ summary.inla.ews = function(object,digits=4L,...){
   
   rownames(hypers)=rownames
   out = c(out, hypers=list(hypers))
-  out = c(out, b_positive = object$results$summary$b_phi$prob_positive)
+  if(is.null(object$results$summary$b_phi$prob_positive)){
+    out = c(out, b_positive = object$results$summary$b$prob_positive)
+  }else{
+    out = c(out, b_positive = object$results$summary$b_phi$prob_positive)
+  }
+  
   n=length(object$.args$data)
   out = c(out,list(n=n))
   
